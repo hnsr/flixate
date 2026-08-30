@@ -5,36 +5,44 @@ Reviewed: 2026-08-30
 ## Verdict
 
 The plan is coherent and viable as a personal, zero-cost project. There is no fatal
-architectural mistake, but there are several wrinkles worth resolving during Phase
-0. The only genuine go/no-go question is whether the worldwide crawl and resulting
-browser payload remain comfortably small. Everything else is a definitional or
-implementation detail that can be resolved without adding hosting, a database, or
-paid services.
+architectural mistake. Restricting version 1 to US availability substantially
+reduces the original crawler risk, although it introduces an explicit coverage
+trade-off. The remaining findings are definitional or implementation details that
+can be resolved without adding hosting, a database, or paid services.
 
 ## Most important findings
 
-### 1. The worldwide crawl remains the largest feasibility risk
+### 1. US-only discovery resolves the region multiplier, but not worldwide coverage
 
-The workload multiplies regions, media types, date partitions, and result pages,
-followed by IMDb-ID lookups for new titles. The three-region experiment in Phase 0
-may not expose the worst case.
+Querying only the US removes the supported-regions multiplier from discovery and
+makes the scheduled job far more likely to fit comfortably inside free GitHub
+Actions. It does not remove pagination, date partitioning, or the initial IMDb-ID
+mapping workload, so the complete US pass still needs to be measured in Phase 0.
 
-A GitHub-hosted job has a six-hour ceiling, while the published Pages artifact must
-remain under 1 GB and deployment itself has a ten-minute limit. The spike should
-therefore produce a concrete global request-count, runtime, and output-size
-projection before Phase 2 begins.
+The premise that the US contains every streamable title is not correct. Availability
+is licensed by country; Netflix, for example, explicitly says that its library
+varies by country and that a title can be licensed in Latin America before the US.
+US-only discovery is therefore an approximation that will miss some regional and
+non-English content, not a lossless shortcut to the worldwide union. The revised
+plan records that limitation and leaves additional regions as an optional later
+feature.
+
+A GitHub-hosted job still has a six-hour ceiling, while the published Pages artifact
+must remain under 1 GB and deployment itself has a ten-minute limit. The spike should
+produce concrete US request-count, runtime, and output-size measurements before
+Phase 2 begins.
 
 References:
 
 - [GitHub Actions limits](https://docs.github.com/en/actions/reference/limits)
 - [GitHub Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)
+- [Netflix on country-specific availability](https://help.netflix.com/en/node/125345)
 
-### 2. There is an easy-to-miss TMDB query trap
+### 2. The TMDB query trap is now addressed
 
-The bootstrap says to query `flatrate`, `free`, and `ads`, but TMDB treats commas as
-**AND** and pipes as **OR**. Consequently, this should either be one
-`flatrate|free|ads` query or three separate queries followed by a union. A
-comma-separated query could produce seriously incomplete results.
+TMDB treats commas as **AND** and pipes as **OR** for the monetization filter. The
+revised bootstrap now specifies one `flatrate|free|ads` query, avoiding the risk of
+a comma-separated query producing seriously incomplete results.
 
 Reference: [TMDB movie discovery documentation](https://developer.themoviedb.org/reference/discover-movie)
 
@@ -126,9 +134,9 @@ routing or avoiding routes altogether.
 
 Reference: [Vite's GitHub Pages guidance](https://vite.dev/guide/static-deploy.html)
 
-### 14. Catalog text should be deterministic
+### 14. Catalog text should remain deterministic
 
-Since the same TMDB title is encountered through many regions, the builder should
-request one fixed language and use a deterministic merge rule. Otherwise whichever
-regional result is processed last could theoretically determine the displayed
-title, overview, or poster.
+The move to one region removes cross-region merge order as a source of variation.
+The revised plan also specifies `language=en-US`. Deduplication and output sorting
+should nevertheless remain deterministic so identical source snapshots produce
+identical artifacts.

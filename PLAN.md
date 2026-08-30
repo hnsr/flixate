@@ -3,7 +3,9 @@
 Status: revised proposal, researched 2026-08-30
 
 Scope clarification: the user wants to discover titles that are streamable
-somewhere, but does not need to know the qualifying service or country.
+somewhere, but does not need to know the qualifying service. Version 1 uses the US
+streaming catalog as a deliberately simple, broad approximation rather than
+crawling every country.
 The only required display metadata is title, movie/show type, and genres, alongside
 the previously requested quality score and source link. IMDb is the required
 version-1 source; Rotten Tomatoes would be an acceptable licensed substitute.
@@ -14,11 +16,11 @@ seasons and episodes are out of scope.
 
 - **TMDB (The Movie Database):** an online movie/TV database with a developer API.
   Flixate uses it for titles, movie/show type, genres, optional artwork/synopses,
-  IMDb ID matching, and determining whether something is streamable somewhere.
+  IMDb ID matching, and determining whether something is streamable in the US.
 - **JustWatch:** a service that tracks where movies and shows are available to
   stream. TMDB exposes availability data supplied by JustWatch, so Flixate can use
   it through TMDB without integrating every streaming service separately. Flixate
-  only keeps the answer “streamable somewhere,” not the service or country.
+  only keeps the answer “streamable in the US,” not the service.
 - **IMDb (Internet Movie Database):** the source of the familiar 0–10 user rating.
   Flixate joins IMDb's published rating data to the titles found through TMDB.
 - **GitHub Pages:** GitHub's static website hosting. It serves the Flixate web app
@@ -34,8 +36,8 @@ seasons and episodes are out of scope.
 
 Build Flixate as a local-first progressive web app (PWA) hosted on GitHub Pages.
 Use GitHub Actions to periodically assemble and deploy a static catalog containing
-titles that are streamable in at least one supported country. Do not retain or show
-which country or service caused a title to qualify.
+titles that are streamable in the US. Do not retain or show which service caused a
+title to qualify.
 Keep the user's small `seen` map in versioned browser `localStorage`, with JSON
 export/import as the first backup and transfer mechanism.
 
@@ -75,26 +77,30 @@ API key is required by an app user.
 ## Important reality check
 
 "Every title available on streaming somewhere" cannot be guaranteed literally by
-any free data source. Streaming availability changes constantly and there is no
-free authoritative global registry.
+any free data source. Streaming availability changes constantly, catalogs differ
+by country, and there is no free authoritative global registry. The US has a broad
+catalog, but it does not contain every title streamable elsewhere and must not be
+described as worldwide coverage.
 
 For Flixate, define the promise as:
 
 > Every top-level movie and series reported by TMDB/JustWatch as available through
-> subscription, ad-supported, or free streaming in any region supported by their
-> API, as of the catalog timestamp.
+> subscription, ad-supported, or free streaming in the US, as of the catalog
+> timestamp.
 
-Country and service are ingestion details only. Once a title qualifies in one
-country on one service, Flixate keeps the title but discards the availability
-details. Rent and purchase offers do not count as streaming by default. Episodes
-should not be separate catalog entries; their parent series should be.
+The US region and service are ingestion details only. Once a title qualifies on one
+US service, Flixate keeps the title but discards the availability details. Rent and
+purchase offers do not count as streaming by default. Episodes should not be
+separate catalog entries; their parent series should be.
 
 TMDB is the practical free source. Its watch-provider data is supplied by
-JustWatch and is country-specific, so the builder still queries each supported
-region to construct the union. It no longer needs to enumerate providers, call the
-per-title watch-provider endpoint, preserve offers, or keep provider data fresh.
-JustWatch attribution remains required because its data decides catalog inclusion.
-Watchmode's provider and deep-link advantages are no longer useful for this product.
+JustWatch and is country-specific. Version 1 queries only `watch_region=US`, which
+removes the cost and complexity of a worldwide regional union but knowingly misses
+titles available exclusively outside the US. The builder does not need to enumerate
+providers, call the per-title watch-provider endpoint, preserve offers, or keep
+provider data fresh. JustWatch attribution remains required because its data
+decides catalog inclusion. Watchmode's provider and deep-link advantages are no
+longer useful for this product.
 
 ## Proposed architecture
 
@@ -105,7 +111,7 @@ Watchmode's provider and deep-link advantages are no longer useful for this prod
           +----------------+----------------+
           |                                 |
    TMDB + JustWatch                  prior Pages snapshot
-   global title union                 for incremental work
+   US title catalog                    for incremental work
           |                                 |
           +--------------+------------------+
                          |
@@ -140,7 +146,7 @@ Use TMDB for:
 - movie and series IDs;
 - title, movie/show type, and genre IDs;
 - IMDb external IDs;
-- the boolean fact that a title is streamable in at least one supported region.
+- the boolean fact that a title is streamable in the US.
 
 Discard TMDB's own vote average. It is a different rating population and must not
 be presented or filtered as though it were an IMDb score. If no IMDb match/rating
@@ -211,7 +217,7 @@ Phase 0 must verify streaming TSV processing in Actions, correct joins, output s
 and in-memory performance on desktop and a representative phone. The IMDb
 republication concern must remain documented as an open TODO rather than being
 mistaken for a resolved compliance question. OMDb's free 1,000-requests-per-day API
-remains unsuitable for populating and filtering the worldwide catalog.
+remains unsuitable for populating and filtering the catalog at this scale.
 
 ### Rotten Tomatoes: acceptable product fallback, not a version-1 data source
 
@@ -229,26 +235,26 @@ mix IMDb and Rotten Tomatoes values as though they were the same rating system.
 
 ### Initial bootstrap
 
-1. Fetch TMDB's supported watch-provider regions.
-2. For every supported region, run movie and TV discovery for `flatrate`, `free`,
-   and `ads` availability.
-3. Partition large discovery queries by release/air-date ranges so no result set is
+1. Run US movie and TV discovery with `watch_region=US`, a fixed `language=en-US`,
+   and `with_watch_monetization_types=flatrate|free|ads`. The pipe is important:
+   TMDB treats it as OR, while a comma means AND.
+2. Partition large discovery queries by release/air-date ranges so no result set is
    silently truncated by API pagination limits.
-4. Union and deduplicate results by `(mediaType, tmdbId)`.
-5. Reuse the IMDb external ID from the previous snapshot for known TMDB IDs. Look
+3. Union and deduplicate results by `(mediaType, tmdbId)`.
+4. Reuse the IMDb external ID from the previous snapshot for known TMDB IDs. Look
    it up only for new or previously unmatched titles. This lookup remains necessary
    for IMDb scores and links; do not hydrate any other detail fields and do not call
    the per-title watch-provider response. Throttle requests, back off on `429`, and
    make the job restartable.
-6. Remove adult titles, seasons, episodes, and other non-top-level types. Retain
+5. Remove adult titles, seasons, episodes, and other non-top-level types. Retain
    unrated or IMDb-unmatched titles, but label them as unrated rather than dropping
    them.
-7. Dictionary-encode genres and generate the compact catalog.
-8. Download IMDb's ratings TSV, stream-join the current IMDb IDs, and add each
+6. Dictionary-encode genres and generate the compact catalog.
+7. Download IMDb's ratings TSV, stream-join the current IMDb IDs, and add each
    matching score/vote count plus the dataset source date.
-9. Validate counts, referential integrity, duplicate IDs, catalog size, rating joins,
-   and a sample of union membership before deployment.
-10. Deploy through the official Pages artifact flow. Do not commit generated catalog
+8. Validate counts, referential integrity, duplicate IDs, catalog size, rating joins,
+   and a sample of US discovery membership before deployment.
+9. Deploy through the official Pages artifact flow. Do not commit generated catalog
    files to normal Git history.
 
 The bootstrap can be progressive if it is too large for one responsible API run:
@@ -259,8 +265,8 @@ workflow run, and let subsequent runs fetch and extend the current Pages snapsho
 
 Use one simple weekly schedule:
 
-- rebuild the union from regional discovery, adding newly streamable titles and
-  removing titles no longer reported in any supported region;
+- rebuild the US catalog from discovery, adding newly streamable titles and removing
+  titles no longer reported in the US;
 - carry forward existing IMDb ID mappings and query only new/missing mappings;
 - download and join the current IMDb ratings file;
 - after every successful run: publish only if validation passes, retaining the last
@@ -273,8 +279,8 @@ show a stale-catalog warning and link the owner to the manual workflow instructi
 Do not create fake keep-alive commits merely to evade that policy.
 
 The UI must show the catalog timestamp. It does not need availability details or a
-provider-specific staleness model; the only relevant age is the global-union
-snapshot date.
+provider-specific staleness model; the only relevant age is the US catalog snapshot
+date.
 
 Action secrets should contain the TMDB read token. It may not appear in built
 JavaScript, Pages files, logs, pull-request workflows, or generated output.
@@ -294,7 +300,7 @@ Suggested manifest fields:
 - schema version;
 - snapshot ID and creation timestamp;
 - source timestamps;
-- title, movie, and series counts plus number of source regions scanned;
+- title, movie, and series counts plus the source region (`US`);
 - coverage/bootstrap status;
 - catalog URL, hash, and byte size;
 - IMDb source date;
@@ -396,8 +402,8 @@ only after there is a demonstrated cross-device need.
 Useful defaults:
 
 - hide seen titles;
-- catalog eligibility means subscription, free, or ad-supported availability in at
-  least one supported country;
+- catalog eligibility means subscription, free, or ad-supported availability in the
+  US;
 - rent and buy alone do not make a title eligible;
 - hide adult content;
 - do not hide unrated titles unless explicitly requested.
@@ -410,6 +416,8 @@ Useful defaults:
 - personal rating and notes;
 - suggestions based on genres, score, and unseen state;
 - optional cross-device sync;
+- optional additional watch regions or a worldwide union if US-only coverage proves
+  too limiting;
 - a licensed Rotten Tomatoes score adapter, only if official access becomes
   available and replacing IMDb remains desirable.
 
@@ -434,8 +442,9 @@ React is a convenience, not an architectural dependency.
 ### Phase 0 — feasibility spike and decisions (small, mandatory)
 
 - Initialize the repository and basic TypeScript workspace.
-- Fetch a multi-region TMDB sample (for example NL, US, and JP).
-- Measure title counts, cross-region duplication, request count, and payload size.
+- Fetch a representative US TMDB sample and then exercise a complete US discovery
+  pass.
+- Measure title counts, request count, runtime, and payload size.
 - Prove date partitioning for discovery result sets.
 - Test Action-side IMDb TSV streaming, filtering, joins, and source-date recording.
 - Test the resulting scored catalog and local caching in desktop and mobile-class
@@ -447,28 +456,28 @@ React is a convenience, not an architectural dependency.
 - Test a representative Pages artifact, Cache API update, and in-memory parse.
 
 Exit gate: data comes only from the documented official sources, score filtering
-works, the acknowledged IMDb republication risk is recorded, projected global size
+works, the acknowledged IMDb republication risk is recorded, the complete US size
 fits comfortably inside Pages/browser limits, and no runtime key leaks.
 
 ### Phase 1 — local-first vertical slice (medium)
 
 - Build the compact result view, IMDb link, and seen toggle.
 - Add persistent local state, backup export/import, and core filters.
-- Use the small multi-region fixture so UI work is fast and deterministic.
+- Use a small US fixture so UI work is fast and deterministic.
 - Add unit tests for filtering and state migrations plus an end-to-end seen flow.
 
 Exit gate: the app is already useful on one device and survives reloads, upgrades,
 and backup round-trips.
 
-### Phase 2 — worldwide catalog pipeline (medium/highest risk)
+### Phase 2 — US catalog pipeline (medium)
 
-- Implement restartable global-union discovery, deduplication, IMDb-ID mapping,
+- Implement restartable US discovery, deduplication, IMDb-ID mapping,
   ratings join, compaction, and validation.
 - Add progressive bootstrap if one run is too large.
 - Add the weekly rebuild and previous-snapshot IMDb-ID reuse.
 - Produce coverage and freshness summaries in Action job output and the manifest.
 
-Exit gate: every record returned by the defined regional discovery snapshot is
+Exit gate: every record returned by the defined US discovery snapshot is
 accounted for, updates are repeatable, and a failed run cannot replace good data.
 
 ### Phase 3 — GitHub Pages production deployment (small)
@@ -502,7 +511,7 @@ disablement is documented and takes only a manual workflow re-enable/run.
 
 ## Acceptance criteria for version 1
 
-- A user can browse the defined global streaming union and see the snapshot date.
+- A user can browse the defined US streaming catalog and see the snapshot date.
 - A title shows an IMDb score/vote count when IMDb has one and always links correctly
   when an IMDb ID is known.
 - Every browser receives automatically refreshed IMDb ratings without an IMDb API
@@ -522,12 +531,12 @@ disablement is documented and takes only a manual workflow re-enable/run.
 
 | Risk | Mitigation |
 | --- | --- |
-| "All worldwide" is larger or less complete than expected | Define coverage precisely, measure first, publish counts and timestamps |
+| US-only discovery misses titles available exclusively elsewhere | Describe coverage as US-only, measure whether it is useful in practice, and add regions later only if the omissions matter |
 | Initial TMDB crawl is too slow or unfriendly to the API | Throttle, back off, partition, checkpoint, and progressively map IMDb IDs |
-| Streamable/not-streamable membership becomes stale | Weekly clean union rebuild and a visible snapshot date |
+| Streamable/not-streamable membership becomes stale | Weekly clean US rebuild and a visible snapshot date |
 | The readable IMDb-derived subset on Pages is public and may conflict with IMDb's terms | Accept for the personal prototype, label it as an unresolved TODO, and revisit local import/encryption/private hosting/licensing before wider sharing |
 | Rotten Tomatoes looks like an easy fallback but has no self-service free feed | Use IMDb for version 1; use RT only through approved licensed access and never scrape it |
-| Large catalog performs poorly on phones | Worker parsing, validated cache swaps, virtual grid, benchmark before global rollout |
+| Large catalog performs poorly on phones | Worker parsing, validated cache swaps, virtual grid, benchmark before production rollout |
 | GitHub Pages is mistaken for a private site | Store no personal data there; document that the URL and assets are public |
 | User clears browser storage or changes devices | Versioned JSON export/import first; optional sync later |
 | Generated data bloats Git history | Deploy an artifact; do not commit snapshots on every run |
@@ -539,6 +548,7 @@ disablement is documented and takes only a manual workflow re-enable/run.
 - [TMDB watch-provider endpoint and JustWatch attribution](https://developer.themoviedb.org/reference/movie-watch-providers)
 - [TMDB discover TV filters](https://developer.themoviedb.org/reference/discover-tv)
 - [TMDB available watch-provider regions](https://developer.themoviedb.org/reference/watch-providers-available-regions)
+- [Netflix explanation of country-specific catalog differences](https://help.netflix.com/en/node/125345)
 - [TMDB non-commercial use and attribution FAQ](https://developer.themoviedb.org/docs/faq)
 - [TMDB API terms, including attribution and six-month cache limit](https://www.themoviedb.org/api-terms-of-use)
 - [TMDB rate limiting guidance](https://developer.themoviedb.org/docs/rate-limiting)
