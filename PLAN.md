@@ -10,6 +10,26 @@ version-1 source; Rotten Tomatoes would be an acceptable licensed substitute.
 Poster and synopsis are optional. Shows use one overall series record and score;
 seasons and episodes are out of scope.
 
+## Quick glossary
+
+- **TMDB (The Movie Database):** an online movie/TV database with a developer API.
+  Flixate uses it for titles, movie/show type, genres, optional artwork/synopses,
+  IMDb ID matching, and determining whether something is streamable somewhere.
+- **JustWatch:** a service that tracks where movies and shows are available to
+  stream. TMDB exposes availability data supplied by JustWatch, so Flixate can use
+  it through TMDB without integrating every streaming service separately. Flixate
+  only keeps the answer “streamable somewhere,” not the service or country.
+- **IMDb (Internet Movie Database):** the source of the familiar 0–10 user rating.
+  Flixate joins IMDb's published rating data to the titles found through TMDB.
+- **GitHub Pages:** GitHub's static website hosting. It serves the Flixate web app
+  and generated catalog without requiring a conventional server.
+- **GitHub Actions:** automated jobs run by GitHub. A scheduled Action periodically
+  rebuilds the streaming catalog, imports current IMDb ratings, and publishes the
+  new version to GitHub Pages.
+- **PWA (Progressive Web App):** a website that can be installed and behave much
+  like a normal app, including retaining its last downloaded catalog for offline
+  use.
+
 ## Recommendation
 
 Build Flixate as a local-first progressive web app (PWA) hosted on GitHub Pages.
