@@ -1,6 +1,6 @@
 # Flixate product and architecture plan
 
-Status: revised proposal, researched 2026-08-29
+Status: revised proposal, researched 2026-08-30
 
 Scope clarification: the user wants to discover titles that are streamable
 somewhere, but does not need to know the qualifying service or country.
@@ -30,6 +30,27 @@ This gives the project a genuinely useful zero-cost version with:
 Cross-device sync should be a later, optional feature. Using a repository as the
 storage backend is technically possible, but secure browser authentication and
 conflict handling make it disproportionately complex for the first version.
+
+## Zero-cost sanity check
+
+The version-1 plan has no required license fee, hosting bill, database bill, domain
+purchase, or paid API. It is technically viable at $0 for personal use and a couple
+of friends, with these conditions, small frictions, and one explicitly accepted
+IMDb licensing/republication risk:
+
+| Component | Cost | Friction/condition |
+| --- | --- | --- |
+| GitHub Pages | $0 | The repository, deployed app, and generated catalog are public on GitHub Free; use the supplied `github.io` URL rather than buying a domain |
+| GitHub Actions | $0 | Standard runners are free for public repositories, but GitHub disables scheduled workflows after 60 days without repository activity; provide a manual Refresh workflow and show catalog age |
+| TMDB metadata/API | $0 | Register for a developer API key, remain non-commercial, show required attribution, refresh cached TMDB content within its six-month limit, and respect rate limits |
+| JustWatch-derived eligibility | $0 through TMDB | JustWatch attribution is mandatory; no separate Watchmode/JustWatch subscription is planned |
+| IMDb ratings | $0 | The scheduled Action downloads, filters, and publishes the relevant scores in the catalog; this is operationally simple but leaves a licensing/republication TODO because Pages files are public |
+| Seen state | $0 | Browser-local storage plus manual JSON backup/import; no automatic cross-device sync |
+| Rotten Tomatoes | Not used | Official data integration requires an approved licensing arrangement, so it cannot be assumed to fit the budget |
+
+Occasional manual re-enabling/triggering of the catalog workflow is the only
+expected operational friction. No IMDb download, import, passphrase, account, or
+API key is required by an app user.
 
 ## Important reality check
 
@@ -68,7 +89,7 @@ Watchmode's provider and deep-link advantages are no longer useful for this prod
           |                                 |
           +--------------+------------------+
                          |
-              validate + compact + shard
+                 validate + compact
                          |
               GitHub Pages deployment
                          |
@@ -76,14 +97,13 @@ Watchmode's provider and deep-link advantages are no longer useful for this prod
                          |
           +--------------+----------------+
           |                               |
-  catalog + ratings cache         private user-state map
-  in the PWA Cache API            in localStorage (`seen`)
+  catalog including IMDb scores   private user-state map
+  cached by the PWA               in localStorage (`seen`)
                                           |
                                  JSON export / import
 
-  IMDb's official ratings TSV is downloaded directly by the browser,
-  parsed in a Web Worker, and cached locally if the Phase 0 spike confirms
-  CORS and browser performance are acceptable.
+  The Action downloads IMDb's official ratings TSV, keeps only catalog IDs,
+  and joins the score/vote count into the deployed catalog automatically.
 ```
 
 The deployed app and catalog are public, because free GitHub Pages does not offer
@@ -123,10 +143,29 @@ Construct the link from the external ID:
 `https://www.imdb.com/title/{imdbId}/`
 
 IMDb publishes `title.ratings.tsv.gz` daily for personal, non-commercial use. The
-preferred design is for the browser to download this file directly from IMDb, parse
-only the IDs present in the Flixate catalog in a Web Worker, and cache the resulting
-`imdbId -> rating, voteCount` map locally in the Cache API. This avoids republishing
-an IMDb-derived database through a public Pages deployment.
+file is currently small enough for scheduled processing (about 8.6 MB compressed
+when checked on 2026-08-30). Its response does not include an
+`Access-Control-Allow-Origin` header, so the Pages app cannot fetch it directly;
+GitHub Actions can download it during the catalog build.
+
+Use this zero-cost automated flow:
+
+1. The scheduled Action downloads IMDb's official `title.ratings.tsv.gz`.
+2. It streams/decompresses the file and retains only IMDb IDs in the current
+   Flixate catalog.
+3. It joins `rating` and `voteCount` into the matching catalog records.
+4. Every scheduled catalog build repeats the import automatically and displays the
+   IMDb source date in the UI.
+
+This makes IMDb scores inside the Pages catalog publicly fetchable even if the app
+is only intended for one household. That may conflict with IMDb's restriction on
+republishing a derived movie-information database. The project owner explicitly
+accepts that risk for the personal version-1 prototype in exchange for simplicity.
+
+TODO before promoting or sharing Flixate beyond the intended tiny personal circle:
+review the IMDb terms and choose a compliant distribution design. Candidate fixes
+include restoring local file import, encrypting the ratings subset, using private
+hosting, or obtaining an appropriately licensed data source.
 
 For a show, join the rating belonging to the main IMDb series ID. IMDb explicitly
 states that a TV series rating is submitted for the series as a whole and is not
@@ -148,17 +187,11 @@ The score filter operates on IMDb's 0–10 value. Retaining `voteCount` enables 
 optional minimum-votes filter so a very high score based on a handful of ratings is
 not mistaken for a well-established consensus.
 
-Phase 0 must verify:
-
-1. the dataset endpoint permits the required browser request;
-2. download, decompression, parsing, and in-memory use are acceptable on desktop
-   and a representative phone;
-3. the implementation and attribution comply with IMDb's personal-use terms.
-
-If direct browser ingestion fails, the fallback is an Action-generated ratings
-subset, but that should not be publicly deployed until its use under IMDb's terms
-has been reviewed. OMDb's free 1,000-requests-per-day API is useful for prototypes
-or on-demand lookups, but cannot populate and filter a worldwide catalog reliably.
+Phase 0 must verify streaming TSV processing in Actions, correct joins, output size,
+and in-memory performance on desktop and a representative phone. The IMDb
+republication concern must remain documented as an open TODO rather than being
+mistaken for a resolved compliance question. OMDb's free 1,000-requests-per-day API
+remains unsuitable for populating and filtering the worldwide catalog.
 
 ### Rotten Tomatoes: acceptable product fallback, not a version-1 data source
 
@@ -190,10 +223,12 @@ mix IMDb and Rotten Tomatoes values as though they were the same rating system.
 6. Remove adult titles, seasons, episodes, and other non-top-level types. Retain
    unrated or IMDb-unmatched titles, but label them as unrated rather than dropping
    them.
-7. Dictionary-encode genres; generate a manifest and compact catalog file.
-8. Validate counts, referential integrity, duplicate IDs, catalog size, and a sample
-   of union membership before deployment.
-9. Deploy through the official Pages artifact flow. Do not commit generated catalog
+7. Dictionary-encode genres and generate the compact catalog.
+8. Download IMDb's ratings TSV, stream-join the current IMDb IDs, and add each
+   matching score/vote count plus the dataset source date.
+9. Validate counts, referential integrity, duplicate IDs, catalog size, rating joins,
+   and a sample of union membership before deployment.
+10. Deploy through the official Pages artifact flow. Do not commit generated catalog
    files to normal Git history.
 
 The bootstrap can be progressive if it is too large for one responsible API run:
@@ -207,15 +242,24 @@ Use one simple weekly schedule:
 - rebuild the union from regional discovery, adding newly streamable titles and
   removing titles no longer reported in any supported region;
 - carry forward existing IMDb ID mappings and query only new/missing mappings;
+- download and join the current IMDb ratings file;
 - after every successful run: publish only if validation passes, retaining the last
   good snapshot otherwise.
+
+Also expose the same updater through `workflow_dispatch`. GitHub automatically
+disables scheduled workflows in public repositories after 60 days without
+repository activity. The app should treat this as expected zero-cost maintenance:
+show a stale-catalog warning and link the owner to the manual workflow instructions.
+Do not create fake keep-alive commits merely to evade that policy.
 
 The UI must show the catalog timestamp. It does not need availability details or a
 provider-specific staleness model; the only relevant age is the global-union
 snapshot date.
 
-Action secrets should contain the TMDB read token. The token must never appear in
-the built JavaScript, Pages files, logs, pull-request workflows, or catalog output.
+Action secrets should contain the TMDB read token. It may not appear in built
+JavaScript, Pages files, logs, pull-request workflows, or generated output.
+Workflows triggered from untrusted pull requests must never receive it. IMDb's
+official dataset download requires no secret.
 
 ### Static data format
 
@@ -233,6 +277,7 @@ Suggested manifest fields:
 - title, movie, and series counts plus number of source regions scanned;
 - coverage/bootstrap status;
 - catalog URL, hash, and byte size;
+- IMDb source date;
 - attribution version.
 
 Suggested title record:
@@ -242,6 +287,7 @@ Suggested title record:
 - display title;
 - media type (`movie` or `show`);
 - genre IDs;
+- IMDb rating and vote count when matched;
 - optionally, poster path and short overview.
 
 If the Phase 0 measurements show excessive memory use, a first load above roughly
@@ -352,9 +398,9 @@ Useful defaults:
 - TypeScript;
 - React and Vite for the static app;
 - `vite-plugin-pwa` for installation and app-shell caching;
-- the Cache API for replaceable catalog and derived IMDb-rating caches;
+- the Cache API for the replaceable catalog;
 - versioned `localStorage` for user state;
-- a Web Worker for catalog and IMDb TSV parsing;
+- a Web Worker for catalog parsing;
 - a virtualized grid for large result sets;
 - Node/TypeScript scripts for catalog assembly;
 - Vitest for units and Playwright for critical browser flows;
@@ -371,14 +417,18 @@ React is a convenience, not an architectural dependency.
 - Fetch a multi-region TMDB sample (for example NL, US, and JP).
 - Measure title counts, cross-region duplication, request count, and payload size.
 - Prove date partitioning for discovery result sets.
-- Test direct IMDb ratings ingestion in desktop and mobile-class browsers.
+- Test Action-side IMDb TSV streaming, filtering, joins, and source-date recording.
+- Test the resulting scored catalog and local caching in desktop and mobile-class
+  browsers.
 - Verify that sampled shows map to their overall IMDb series entries and that no
   season/episode IDs or ratings enter the output.
-- Confirm required TMDB, JustWatch, and IMDb attribution/licensing behavior.
+- Confirm required TMDB, JustWatch, and IMDb attribution; preserve the acknowledged
+  IMDb republication question as a visible TODO.
 - Test a representative Pages artifact, Cache API update, and in-memory parse.
 
-Exit gate: data can be acquired within terms, score filtering works, projected
-global size fits comfortably inside Pages/browser limits, and no runtime key leaks.
+Exit gate: data comes only from the documented official sources, score filtering
+works, the acknowledged IMDb republication risk is recorded, projected global size
+fits comfortably inside Pages/browser limits, and no runtime key leaks.
 
 ### Phase 1 — local-first vertical slice (medium)
 
@@ -393,7 +443,7 @@ and backup round-trips.
 ### Phase 2 — worldwide catalog pipeline (medium/highest risk)
 
 - Implement restartable global-union discovery, deduplication, IMDb-ID mapping,
-  compaction, and validation.
+  ratings join, compaction, and validation.
 - Add progressive bootstrap if one run is too large.
 - Add the weekly rebuild and previous-snapshot IMDb-ID reuse.
 - Produce coverage and freshness summaries in Action job output and the manifest.
@@ -404,12 +454,15 @@ accounted for, updates are repeatable, and a failed run cannot replace good data
 ### Phase 3 — GitHub Pages production deployment (small)
 
 - Build and deploy with the official Pages Actions flow.
-- Store only source credentials in Actions secrets.
+- Store the TMDB credential in Actions secrets.
 - Add PWA caching, update notification, Credits/About, and error recovery.
 - Document one-time setup and how to run a manual refresh.
+- Document GitHub's 60-day public-repository schedule disablement and how to
+  re-enable the workflow.
 
-Exit gate: normal use and scheduled refresh require no server or manual database
-maintenance and remain within free GitHub limits.
+Exit gate: normal use and active scheduled refresh require no server or database
+maintenance and remain within free GitHub limits; recovery from GitHub's inactivity
+disablement is documented and takes only a manual workflow re-enable/run.
 
 ### Phase 4 — refinement (medium)
 
@@ -432,6 +485,8 @@ maintenance and remain within free GitHub limits.
 - A user can browse the defined global streaming union and see the snapshot date.
 - A title shows an IMDb score/vote count when IMDb has one and always links correctly
   when an IMDb ID is known.
+- Every browser receives automatically refreshed IMDb ratings without an IMDb API
+  key, command line, passphrase, paid account, or manual import.
 - Every show represents the series as a whole; no season or episode records or
   ratings enter the catalog.
 - Seen/unseen is one action, persists locally, and can be hidden by default.
@@ -450,13 +505,14 @@ maintenance and remain within free GitHub limits.
 | "All worldwide" is larger or less complete than expected | Define coverage precisely, measure first, publish counts and timestamps |
 | Initial TMDB crawl is too slow or unfriendly to the API | Throttle, back off, partition, checkpoint, and progressively map IMDb IDs |
 | Streamable/not-streamable membership becomes stale | Weekly clean union rebuild and a visible snapshot date |
-| IMDb browser ingestion fails or violates expected usage | Make it a Phase 0 gate; do not silently scrape IMDb pages |
+| The readable IMDb-derived subset on Pages is public and may conflict with IMDb's terms | Accept for the personal prototype, label it as an unresolved TODO, and revisit local import/encryption/private hosting/licensing before wider sharing |
 | Rotten Tomatoes looks like an easy fallback but has no self-service free feed | Use IMDb for version 1; use RT only through approved licensed access and never scrape it |
 | Large catalog performs poorly on phones | Worker parsing, validated cache swaps, virtual grid, benchmark before global rollout |
 | GitHub Pages is mistaken for a private site | Store no personal data there; document that the URL and assets are public |
 | User clears browser storage or changes devices | Versioned JSON export/import first; optional sync later |
 | Generated data bloats Git history | Deploy an artifact; do not commit snapshots on every run |
 | A scheduled build publishes corrupt/incomplete data | Validate first and deploy atomically only on success |
+| GitHub disables the public repository's schedule after 60 inactive days | Show catalog age, support manual dispatch, and document re-enabling the schedule |
 
 ## Sources checked
 
@@ -464,6 +520,7 @@ maintenance and remain within free GitHub limits.
 - [TMDB discover TV filters](https://developer.themoviedb.org/reference/discover-tv)
 - [TMDB available watch-provider regions](https://developer.themoviedb.org/reference/watch-providers-available-regions)
 - [TMDB non-commercial use and attribution FAQ](https://developer.themoviedb.org/docs/faq)
+- [TMDB API terms, including attribution and six-month cache limit](https://www.themoviedb.org/api-terms-of-use)
 - [TMDB rate limiting guidance](https://developer.themoviedb.org/docs/rate-limiting)
 - [IMDb non-commercial datasets](https://www.imdb.com/interfaces/)
 - [IMDb guidance for software use](https://help.imdb.com/article/imdb/general-information/can-i-use-imdb-data-in-my-software/G5JTRESSHJBBHTGX)
@@ -476,5 +533,6 @@ maintenance and remain within free GitHub limits.
 - [GitHub Pages overview](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)
 - [GitHub Pages private access control](https://docs.github.com/en/enterprise-cloud@latest/pages/getting-started-with-github-pages/changing-the-visibility-of-your-github-pages-site)
 - [GitHub Actions free-use allowances](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
+- [GitHub scheduled-workflow 60-day inactivity behavior](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/disable-and-enable-workflows)
 - [GitHub Contents API](https://docs.github.com/en/rest/repos/contents)
 - [GitHub OAuth application best practices](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/best-practices-for-creating-an-oauth-app)
