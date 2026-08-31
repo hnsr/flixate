@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Flixate">
+  <rect width="512" height="512" rx="118" fill="#d7ff5f"/>
+  <path fill="#11130f" d="M128 104h264v70H212v72h150v68H212v94h-84z"/>
+  <circle cx="391" cy="408" r="34" fill="#11130f"/>
+</svg>

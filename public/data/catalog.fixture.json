@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "fixture": true,
+  "createdAt": "2026-08-30T20:00:00.000Z",
+  "regions": ["US", "NL"],
+  "image": {
+    "baseUrl": "https://image.tmdb.org/t/p",
+    "posterSize": "w342"
+  },
+  "synopsisShards": {
+    "count": 4,
+    "pattern": "data/synopsis/{shard}.json"
+  },
+  "titles": [
+    { "key": "movie:129", "tmdbId": 129, "title": "Spirited Away", "releaseYear": 2001, "mediaType": "movie", "genreIds": [16, 10751, 14], "rating": 8.534, "voteCount": 18794, "posterPath": "/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg" },
+    { "key": "movie:191720", "tmdbId": 191720, "title": "Jodorowsky's Dune", "releaseYear": 2013, "mediaType": "movie", "genreIds": [99], "rating": 7.823, "voteCount": 771, "posterPath": "/mv1zSd6P59D43iYQXs7qx01nSiX.jpg" },
+    { "key": "movie:206158", "tmdbId": 206158, "title": "Karla's Arrival", "releaseYear": 2011, "mediaType": "movie", "genreIds": [99], "voteCount": 0 },
+    { "key": "movie:329865", "tmdbId": 329865, "title": "Arrival", "releaseYear": 2016, "mediaType": "movie", "genreIds": [18, 878, 9648], "rating": 7.633, "voteCount": 19780, "posterPath": "/pEzNVQfdzYDzVK0XqxERIw2x2se.jpg" },
+    { "key": "movie:438631", "tmdbId": 438631, "title": "Dune", "releaseYear": 2021, "mediaType": "movie", "genreIds": [878, 12], "rating": 7.784, "voteCount": 15434, "posterPath": "/v1tRXZ4JtD2Iv6fjkPvT4GiwslV.jpg" },
+    { "key": "movie:46523", "tmdbId": 46523, "title": "New Kids Turbo", "releaseYear": 2010, "mediaType": "movie", "genreIds": [28, 35], "rating": 6.346, "voteCount": 345, "posterPath": "/5nD9368gG2b0uGLHC2vWRTN8PQu.jpg" },
+    { "key": "movie:496243", "tmdbId": 496243, "title": "Parasite", "releaseYear": 2019, "mediaType": "movie", "genreIds": [35, 53, 18], "rating": 8.491, "voteCount": 21200, "posterPath": "/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg" },
+    { "key": "movie:515042", "tmdbId": 515042, "title": "Free Solo", "releaseYear": 2018, "mediaType": "movie", "genreIds": [99, 12], "rating": 7.9, "voteCount": 1558, "posterPath": "/v4QfYZMACODlWul9doN9RxE99ag.jpg" },
+    { "key": "movie:531428", "tmdbId": 531428, "title": "Portrait of a Lady on Fire", "releaseYear": 2019, "mediaType": "movie", "genreIds": [18, 10749], "rating": 8.088, "voteCount": 3016, "posterPath": "/rUDuOKpkKBHxx41BScqKej72iT3.jpg" },
+    { "key": "movie:551115", "tmdbId": 551115, "title": "Penoza: The Final Chapter", "releaseYear": 2019, "mediaType": "movie", "genreIds": [28, 80, 53, 18], "rating": 6.7, "voteCount": 146, "posterPath": "/aqRXm3OXSVWuGp3bl8YO4szmos3.jpg" },
+    { "key": "movie:603", "tmdbId": 603, "title": "The Matrix", "releaseYear": 1999, "mediaType": "movie", "genreIds": [28, 878], "rating": 8.256, "voteCount": 28594, "posterPath": "/dXNAPwY7VrqMAo51EKhhCJfaGb5.jpg" },
+    { "key": "movie:660120", "tmdbId": 660120, "title": "The Worst Person in the World", "releaseYear": 2021, "mediaType": "movie", "genreIds": [18, 10749, 35], "rating": 7.429, "voteCount": 1946, "posterPath": "/1NxGNQchGBTHXJ6RShLY1IlZqWn.jpg" },
+    { "key": "movie:682110", "tmdbId": 682110, "title": "My Octopus Teacher", "releaseYear": 2020, "mediaType": "movie", "genreIds": [99], "rating": 7.893, "voteCount": 1075, "posterPath": "/hvTVZb7hBC8tZAGoEhH5eiMJu2B.jpg" },
+    { "key": "tv:1044", "tmdbId": 1044, "title": "Planet Earth", "releaseYear": 2006, "mediaType": "show", "genreIds": [99], "rating": 8.636, "voteCount": 1277, "posterPath": "/bNcNxUtZ520d5de5s78onoiSiwQ.jpg" },
+    { "key": "tv:136315", "tmdbId": 136315, "title": "The Bear", "releaseYear": 2022, "mediaType": "show", "genreIds": [18, 35], "rating": 8.149, "voteCount": 1899, "posterPath": "/eKfVzzEazSIjJMrw9ADa2x8ksLz.jpg" },
+    { "key": "tv:2316", "tmdbId": 2316, "title": "The Office", "releaseYear": 2005, "mediaType": "show", "genreIds": [35], "rating": 8.581, "voteCount": 5425, "posterPath": "/7DJKHzAi83BmQrWLrYYOqcoKfhR.jpg" },
+    { "key": "tv:2996", "tmdbId": 2996, "title": "The Office", "releaseYear": 2001, "mediaType": "show", "genreIds": [35], "rating": 7.832, "voteCount": 988, "posterPath": "/oX2JKE1RzAONMbYlujHx0hRAJo1.jpg" },
+    { "key": "tv:36536", "tmdbId": 36536, "title": "Penoza", "releaseYear": 2010, "mediaType": "show", "genreIds": [80, 18], "rating": 7.7, "voteCount": 25, "posterPath": "/dvYTGjftwpcAHBQKXZUh77fMrur.jpg" },
+    { "key": "tv:70523", "tmdbId": 70523, "title": "Dark", "releaseYear": 2017, "mediaType": "show", "genreIds": [80, 18, 10765, 9648], "rating": 8.427, "voteCount": 7804, "posterPath": "/apbrbWs8M9lyOpJYU5WXrpFbk1Z.jpg" },
+    { "key": "tv:76471", "tmdbId": 76471, "title": "De Luizenmoeder", "releaseYear": 2018, "mediaType": "show", "genreIds": [35], "rating": 8.2, "voteCount": 13, "posterPath": "/wFsJAHfPyGFJhn4kVE4fnsUp14u.jpg" },
+    { "key": "tv:87108", "tmdbId": 87108, "title": "Chernobyl", "releaseYear": 2019, "mediaType": "show", "genreIds": [18], "rating": 8.723, "voteCount": 8231, "posterPath": "/hlLXt2tOPT6RRnjiUmoxyG1LTFi.jpg" },
+    { "key": "tv:94605", "tmdbId": 94605, "title": "Arcane", "releaseYear": 2021, "mediaType": "show", "genreIds": [16, 10759, 10765], "rating": 8.749, "voteCount": 6138, "posterPath": "/fqldf2t8ztc9aiwn3k6mlX3tvRT.jpg" },
+    { "key": "tv:95396", "tmdbId": 95396, "title": "Severance", "releaseYear": 2022, "mediaType": "show", "genreIds": [18, 9648, 10765], "rating": 8.392, "voteCount": 2909, "posterPath": "/pPHpeI2X1qEd1CS1SeyrdhZ4qnT.jpg" }
+  ]
+}

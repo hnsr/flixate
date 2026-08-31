@@ -472,6 +472,11 @@ no runtime key leaks.
 
 ### Phase 1 — local-first vertical slice (medium)
 
+Status: implemented on 2026-08-31. See [PHASE-1.md](PHASE-1.md) for the feature
+inventory, verification results, and Phase 2 boundary. The app is useful against a
+representative fixture; replacing that fixture with the complete catalog remains
+Phase 2 work.
+
 - Build the compact result card with title, year, poster, score, TMDB link, expandable
   synopsis, and seen toggle.
 - Add persistent local state, backup export/import, and core filters.
