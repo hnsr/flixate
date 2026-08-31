@@ -5,32 +5,38 @@ Reviewed: 2026-08-30
 ## Verdict
 
 The plan is coherent and viable as a personal, zero-cost project. There is no fatal
-architectural mistake. Restricting version 1 to US availability substantially
-reduces the original crawler risk, although it introduces an explicit coverage
-trade-off. The remaining findings are definitional or implementation details that
-can be resolved without adding hosting, a database, or paid services.
+architectural mistake. Restricting version 1 to a US+NL availability union
+substantially reduces the original crawler risk while covering both the broad US
+catalog and personally relevant Dutch titles, although it retains an explicit
+coverage trade-off. The remaining findings are definitional or implementation
+details that can be resolved without adding hosting, a database, or paid services.
+The completed Phase 0 run confirms that implementation can proceed to Phase 1.
+Choosing TMDB scoring removes the only unusually expensive bootstrap and the only
+MVP data-republication concern; there are no known blockers.
 
 ## Most important findings
 
-### 1. US-only discovery resolves the region multiplier, but not worldwide coverage
+### 1. US+NL bounds the region multiplier, but is not worldwide coverage
 
-Querying only the US removes the supported-regions multiplier from discovery and
-makes the scheduled job far more likely to fit comfortably inside free GitHub
-Actions. It does not remove pagination, date partitioning, or the initial IMDb-ID
-mapping workload, so the complete US pass still needs to be measured in Phase 0.
+Querying only the US and Netherlands bounds the supported-regions multiplier at two.
+The completed Phase 0 run found 171,436 unique titles. The original end-to-end run
+finished in 11 minutes 45 seconds, including 1,000 diagnostic lookups that are no
+longer needed, with no rate-limit responses. The final TMDB-scored catalog is 4.14
+MB compressed. This fits comfortably inside free GitHub Actions and Pages limits,
+and there is no separate score-mapping bootstrap.
 
 The premise that the US contains every streamable title is not correct. Availability
 is licensed by country; Netflix, for example, explicitly says that its library
 varies by country and that a title can be licensed in Latin America before the US.
-US-only discovery is therefore an approximation that will miss some regional and
-non-English content, not a lossless shortcut to the worldwide union. The revised
-plan records that limitation and leaves additional regions as an optional later
-feature.
+The US+NL union is therefore a personally useful approximation, not a lossless
+shortcut to the worldwide union. It should capture Dutch titles reported in the
+Netherlands while retaining broad US coverage, but it will still miss content
+exclusive to other regions. The revised plan records that limitation and leaves
+additional regions as an optional later feature.
 
 A GitHub-hosted job still has a six-hour ceiling, while the published Pages artifact
-must remain under 1 GB and deployment itself has a ten-minute limit. The spike should
-produce concrete US request-count, runtime, and output-size measurements before
-Phase 2 begins.
+must remain under 1 GB and deployment itself has a ten-minute limit. The measured
+discovery and artifact fit those constraints with comfortable margins.
 
 References:
 
@@ -49,10 +55,13 @@ Reference: [TMDB movie discovery documentation](https://developer.themoviedb.org
 ### 3. Date partitioning needs a completeness strategy, not merely date ranges
 
 Fixed yearly or monthly partitions can themselves become too large, so the builder
-needs adaptive subdivision. Titles with no known release or first-air date need
-special handling as well; TMDB TV discovery excludes null first-air dates by
-default. This should be explicitly tested alongside the partitioning work in the
-bootstrap.
+now subdivides date ranges adaptively. The live run created 43 retrievable leaf
+partitions without a saturated single day. Titles with no known release or first-air
+date remain the completeness wrinkle: dated results were roughly 0.5% below the
+unpartitioned regional membership counts, and TMDB does not expose a clean pageable
+null-date filter. The catalog therefore includes exhaustive dated discovery plus a
+configurable unpartitioned popularity window and does not claim literal 100%
+coverage.
 
 Reference: [TMDB TV discovery parameters](https://developer.themoviedb.org/reference/discover-tv)
 
@@ -68,17 +77,17 @@ Reference: [TMDB season-provider endpoint](https://developer.themoviedb.org/refe
 
 ## Product and data-model wrinkles
 
-### 5. Documentaries are not yet reflected in the document
+### 5. Documentaries should remain a cross-media genre
 
-They should remain a genre or preset spanning movies and series, rather than become
-a third media type. The MVP supports genres generally, but does not call out a
-convenient Documentary shortcut.
+The plan correctly treats Documentary as a genre shortcut spanning movies and
+series rather than as a third media type. The implementation still needs to account
+for TMDB's separate movie and TV genre vocabularies when applying that shortcut.
 
 ### 6. A release year is probably worth retaining
 
 The proposed title record cannot visibly distinguish two shows or remakes with the
 same title. Examples such as different versions of *The Office* would otherwise be
-identical until someone follows the IMDb link. Year is tiny in storage terms and
+identical until someone follows the TMDB link. Year is tiny in storage terms and
 unusually valuable here.
 
 ### 7. Movie and TV genre labels need a defined relationship
@@ -91,7 +100,7 @@ a single genre filter may behave surprisingly across movies and shows.
 ### 8. Unrated-title behavior is slightly ambiguous
 
 The plan says not to hide unrated titles unless explicitly requested, but an unrated
-title cannot satisfy a numeric minimum IMDb score. A sensible interpretation is
+title cannot satisfy a numeric minimum TMDB score. A sensible interpretation is
 that setting a score threshold implicitly excludes unrated records, but this should
 be made unambiguous in tests and UI copy.
 
@@ -103,21 +112,21 @@ outside theaters.” It is a product choice rather than a technical necessity.
 
 ## Operational wrinkles
 
-### 10. IMDb mappings can be corrected over time
+### 10. Deferring IMDb is a meaningful simplification
 
-Reusing IDs indefinitely and looking them up only for new or unmatched titles is
-efficient, but a mistaken TMDB-to-IMDb mapping would then persist forever. A slow
-periodic revalidation, perhaps a rotating fraction each week, would prevent
-permanent bad links and ratings.
+TMDB scores arrive with each discovery result. The MVP therefore avoids roughly
+171,000 external-ID requests, a separate daily dataset download and join, mapping
+correction logic, IMDb acknowledgement work, and a redistribution/licensing TODO.
+IMDb can still be evaluated after the core app is useful without shaping the MVP
+schema around it.
 
-### 11. IMDb requires prescribed acknowledgement wording
+### 11. Low-vote TMDB scores need confidence semantics
 
-The plan requires general IMDb attribution in its acceptance criteria, but its
-explicit UI credits currently mention only TMDB and JustWatch. IMDb publishes
-specific acknowledgement text that should be included during implementation. This
-is separate from the already-acknowledged republication risk.
-
-Reference: [IMDb usage guidance](https://help.imdb.com/article/imdb/general-information/can-i-use-imdb-data-in-my-software/G5JTRESSHJBBHTGX)
+TMDB score coverage is broad—133,535 of 171,436 titles have at least one vote—but
+only 31,128 have at least 50. A small vote count can make a precise-looking score
+misleading. Retain and display vote count, provide a minimum-votes filter, and mark
+fewer than 50 votes as low-confidence. Do not remove low-vote or unrated titles from
+the catalog merely because their quality signal is weak.
 
 ### 12. Seen state will not automatically be shared between people or devices
 
@@ -136,7 +145,7 @@ Reference: [Vite's GitHub Pages guidance](https://vite.dev/guide/static-deploy.h
 
 ### 14. Catalog text should remain deterministic
 
-The move to one region removes cross-region merge order as a source of variation.
-The revised plan also specifies `language=en-US`. Deduplication and output sorting
-should nevertheless remain deterministic so identical source snapshots produce
-identical artifacts.
+The same title can now be encountered in both regions. The revised plan specifies
+`language=en-US` and a fixed region preference for selecting display fields.
+Deduplication and output sorting should also remain deterministic so identical
+source snapshots produce identical artifacts.
