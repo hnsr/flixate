@@ -51,10 +51,10 @@ export type CatalogTitle = {
   title: string;
   mediaType: "movie" | "show";
   genreIds: number[];
+  releaseYear?: number;
   rating?: number;
   voteCount?: number;
   posterPath?: string;
-  overview?: string;
 };
 
 export type RequestStats = {
@@ -104,4 +104,58 @@ export type PhaseZeroManifest = {
   sourceDates: {
     tmdb: string;
   };
+};
+
+export type CompressedArtifact = {
+  file: string;
+  sha256: string;
+  compressedBytes: number;
+  uncompressedBytes: number;
+};
+
+export type SynopsisShardArtifact = CompressedArtifact & {
+  number: number;
+  entries: number;
+};
+
+export type CatalogManifest = {
+  schemaVersion: 1;
+  snapshotId: string;
+  createdAt: string;
+  fixture: false;
+  regions: readonly Region[];
+  coverage: {
+    mode: "sample" | "full";
+    datedRange: DateRange;
+    topWindowPages: number;
+    caveat: string;
+  };
+  counts: {
+    titles: number;
+    movies: number;
+    shows: number;
+    tmdbRated: number;
+    tmdbUnrated: number;
+    withReleaseYear: number;
+    withPoster: number;
+    withSynopsis: number;
+  };
+  catalog: CompressedArtifact;
+  synopsisShards: {
+    scheme: "tmdb-id-modulo";
+    count: number;
+    shards: SynopsisShardArtifact[];
+  };
+  scores: {
+    source: "tmdb";
+    lowConfidenceBelowVotes: number;
+  };
+  image: {
+    baseUrl: string;
+    posterSize: string;
+  };
+  sourceDates: {
+    tmdb: string;
+  };
+  attributionVersion: 1;
 };

@@ -18,8 +18,10 @@ export function toCatalogTitles(titles: Iterable<DiscoveredTitle>): CatalogTitle
       title: title.title,
       mediaType: title.mediaType === "tv" ? "show" : "movie",
       genreIds: title.genreIds,
+      ...(title.releaseDate ? { releaseYear: Number(title.releaseDate.slice(0, 4)) } : {}),
       ...(title.rating !== undefined ? { rating: title.rating } : {}),
-      ...(title.voteCount !== undefined ? { voteCount: title.voteCount } : {}),
+      ...(title.voteCount !== undefined ? { voteCount: title.voteCount } : { voteCount: 0 }),
+      ...(title.posterPath ? { posterPath: title.posterPath } : {}),
     }))
     .sort((a, b) => a.key.localeCompare(b.key));
 }
@@ -89,11 +91,25 @@ export function validateCatalog(titles: readonly CatalogTitle[]): string[] {
     if (keys.has(title.key)) errors.push(`Duplicate key: ${title.key}`);
     keys.add(title.key);
     if (!title.title.trim()) errors.push(`Blank title: ${title.key}`);
+    if (!Number.isInteger(title.tmdbId) || title.tmdbId < 1) {
+      errors.push(`Invalid TMDB ID: ${title.key}`);
+    }
     if (!title.key.startsWith(title.mediaType === "show" ? "tv:" : "movie:")) {
       errors.push(`Media type/key mismatch: ${title.key}`);
     }
+    const expectedKey = `${title.mediaType === "show" ? "tv" : "movie"}:${title.tmdbId}`;
+    if (title.key !== expectedKey) errors.push(`TMDB ID/key mismatch: ${title.key}`);
     if (title.rating !== undefined && (title.rating < 0 || title.rating > 10)) {
       errors.push(`Invalid rating: ${title.key}`);
+    }
+    if (
+      title.releaseYear !== undefined &&
+      (!Number.isInteger(title.releaseYear) || title.releaseYear < 1800 || title.releaseYear > 2200)
+    ) {
+      errors.push(`Invalid release year: ${title.key}`);
+    }
+    if (title.posterPath !== undefined && !title.posterPath.startsWith("/")) {
+      errors.push(`Invalid poster path: ${title.key}`);
     }
     if (
       title.voteCount !== undefined &&

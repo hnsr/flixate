@@ -10,7 +10,7 @@ const catalog: CatalogDocument = {
   createdAt: "2026-08-30T00:00:00.000Z",
   regions: ["US", "NL"],
   image: { baseUrl: "https://image.tmdb.org/t/p", posterSize: "w342" },
-  synopsisShards: { count: 1, pattern: "data/synopsis/{shard}.json" },
+  synopsisShards: { count: 1, format: "json", pattern: "data/synopsis/{shard}.json" },
   titles: [
     { key: "movie:1", tmdbId: 1, title: "Arrival", releaseYear: 2016, mediaType: "movie", genreIds: [18, 878], rating: 7.6, voteCount: 100 },
     { key: "tv:2", tmdbId: 2, title: "Unrated Show", releaseYear: 2024, mediaType: "show", genreIds: [99], voteCount: 0 },

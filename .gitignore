@@ -11,3 +11,4 @@ playwright-report/
 test-results/
 .cache/
 artifacts/
+public/data/live/

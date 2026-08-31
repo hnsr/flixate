@@ -16,6 +16,11 @@ MVP data-republication concern. Promoting year, poster, and synopsis to the MVP 
 not introduce another provider or credential; the planned core/shard split keeps
 the startup payload controlled. There are no known blockers.
 
+Implementation update: Phases 1 and 2 completed on 2026-08-31. The catalog pipeline
+and app resolved the implementation wrinkles identified below; the regional,
+season-level availability, rent/buy, and per-browser state points remain deliberate
+product trade-offs.
+
 ## Most important findings
 
 ### 1. US+NL bounds the region multiplier, but is not worldwide coverage
@@ -24,7 +29,7 @@ Querying only the US and Netherlands bounds the supported-regions multiplier at 
 The completed Phase 0 run found 171,436 unique titles. The original end-to-end run
 finished in 11 minutes 45 seconds, including 1,000 diagnostic lookups that are no
 longer needed, with no rate-limit responses. The measured score-only catalog is
-4.14 MB compressed; adding year and poster path projects to 8.42 MB. This fits
+4.14 MB compressed; the implemented core with year and poster path is 8.43 MB. This fits
 comfortably inside free GitHub Actions and Pages limits, and there is no separate
 score-mapping or metadata-enrichment bootstrap.
 
@@ -83,8 +88,8 @@ Reference: [TMDB season-provider endpoint](https://developer.themoviedb.org/refe
 ### 5. Documentaries should remain a cross-media genre
 
 The plan correctly treats Documentary as a genre shortcut spanning movies and
-series rather than as a third media type. The implementation still needs to account
-for TMDB's separate movie and TV genre vocabularies when applying that shortcut.
+series rather than as a third media type. Phase 2 now maps TMDB's separate movie and
+TV vocabularies into shared labels, including Documentary.
 
 ### 6. Release year is now correctly part of the MVP
 
@@ -96,9 +101,9 @@ about 0.29 MB.
 ### 7. Movie and TV genre labels need a defined relationship
 
 TMDB maintains separate movie and TV genre taxonomies. Some concepts have different
-labels, such as action-oriented or science-fiction genres. Flixate must either
-present the source genres unchanged or map them into a shared vocabulary; otherwise
-a single genre filter may behave surprisingly across movies and shows.
+labels, such as action-oriented or science-fiction genres. Phase 2 resolved this
+with an explicit shared mapping; combined TV categories can yield multiple useful
+labels, such as both Action and Adventure.
 
 ### 8. Unrated-title behavior is slightly ambiguous
 
@@ -139,10 +144,10 @@ intentional architectural trade-off in the user-state design.
 
 ### 13. GitHub Pages introduces a small routing and PWA gotcha
 
-A repository site is normally hosted below `/flixate/`, so Vite's base path,
-manifest paths, service-worker scope, and cached catalog URL must all use that
-prefix. Client-side routes also need a Pages-compatible strategy, such as hash
-routing or avoiding routes altogether.
+A repository site is normally hosted below `/flixate/`. Vite's production base,
+manifest resolution, service-worker scope, and runtime cache patterns now account
+for that prefix, and Flixate intentionally has no client-side routes. The deployed
+Pages headers and PWA scope still need their Phase 3 smoke test.
 
 Reference: [Vite's GitHub Pages guidance](https://vite.dev/guide/static-deploy.html)
 
@@ -163,7 +168,8 @@ from TMDB's CDN with a placeholder and bounded cache.
 Synopses are different: embedding every overview raises the projected compressed
 catalog from 8.42 MB to 30.38 MB and the uncompressed JSON to 83.44 MB. Keeping
 overview records in deterministic, on-demand static shards preserves the feature
-without imposing that startup cost. Missing English overviews and unavailable
-images must remain normal, tested states.
+without imposing that startup cost. Phase 2 implemented 128 content-addressed gzip
+shards; the largest measured shard is 174.8 kB. Missing English overviews and
+unavailable images remain normal, tested states.
 
 Reference: [TMDB image basics](https://developer.themoviedb.org/docs/image-basics)

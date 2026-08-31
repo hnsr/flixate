@@ -453,6 +453,16 @@ select {
   min-width: 0;
 }
 
+.catalog-warning {
+  margin: 0 0 1rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
 .results-heading {
   min-height: 59px;
   padding-bottom: 15px;

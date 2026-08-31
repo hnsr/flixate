@@ -229,8 +229,9 @@ mix TMDB and Rotten Tomatoes values as though they were the same rating system.
    needed.
 5. Remove adult titles, seasons, episodes, and other non-top-level types. Retain
    zero-vote titles, but label them as unrated rather than dropping them.
-6. Dictionary-encode genres and generate the compact core catalog containing year
-   and poster path. Generate deterministic synopsis shards separately.
+6. Retain TMDB's compact genre IDs with an explicit shared movie/show label mapping,
+   and generate the core catalog containing year and poster path. Generate
+   deterministic synopsis shards separately.
 7. Validate per-region and union counts, referential integrity, duplicate IDs,
    core/shard sizes, metadata and score coverage, and a sample of US and Netherlands
    discovery membership before deployment.
@@ -272,8 +273,9 @@ and a small manifest. The core contains everything needed to search, filter, sor
 and render collapsed result cards. Fetch a synopsis shard only when a title is
 expanded. Cache the last good core response through the PWA Cache API, parse it in
 a Web Worker, and query it in memory. Activate a new version only after its hash and
-schema validate. Explicitly decompress static `.gz` bytes in the worker rather than
-depending on GitHub Pages to supply a `Content-Encoding` header. Add IndexedDB,
+schema validate. Store gzip payloads with an opaque `.json.gz.bin` suffix and
+explicitly decompress their bytes in the worker rather than allowing a host to add
+`Content-Encoding` and transform the response. Add IndexedDB,
 SQLite-WASM, or further core-catalog partitioning only if measurements show they are
 needed.
 
@@ -473,9 +475,9 @@ no runtime key leaks.
 ### Phase 1 — local-first vertical slice (medium)
 
 Status: implemented on 2026-08-31. See [PHASE-1.md](PHASE-1.md) for the feature
-inventory, verification results, and Phase 2 boundary. The app is useful against a
-representative fixture; replacing that fixture with the complete catalog remains
-Phase 2 work.
+inventory, verification results, and original Phase 2 boundary. The representative
+fixture remains the default development source; Phase 2 has since connected the
+same UI contract to the complete generated catalog.
 
 - Build the compact result card with title, year, poster, score, TMDB link, expandable
   synopsis, and seen toggle.
@@ -491,11 +493,19 @@ and backup round-trips.
 
 ### Phase 2 — US+NL catalog pipeline (medium)
 
+Status: implemented on 2026-08-31. See [PHASE-2.md](PHASE-2.md) for the measured
+artifact sizes, validation coverage, and remaining Phase 3 deployment boundary.
+
 - Implement restartable two-region discovery, deduplication, TMDB metadata/score
   retention, core-catalog compaction, synopsis sharding, and validation.
-- Add progressive bootstrap if one run is too large.
+- Keep response-level restartability; a progressive multi-run bootstrap is not
+  needed because the measured cold crawl completes comfortably inside one job.
 - Add the weekly rebuild and raw-response caching/checkpointing.
 - Produce coverage and freshness summaries in Action job output and the manifest.
+
+The complete cached US+NL rebuild produced 171,436 titles, an 8.43 MB compressed
+core, and 128 synopsis shards whose largest compressed file is 174.8 kB. The app
+loads and validates this snapshot successfully in real-browser end-to-end tests.
 
 Exit gate: every record returned by the defined US and Netherlands discovery
 snapshot is accounted for, updates are repeatable, and a failed run cannot replace

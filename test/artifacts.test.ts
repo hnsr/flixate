@@ -24,7 +24,7 @@ describe("catalog artifacts", () => {
         title: "Movie",
         genreIds: [18],
         releaseDate: "2020-01-01",
-        posterPath: null,
+        posterPath: "/movie.jpg",
         overview: null,
         regions: new Set(["US", "NL"]),
         displaySourceRegion: "US",
@@ -40,6 +40,9 @@ describe("catalog artifacts", () => {
     expect(compact[0]).not.toHaveProperty("imdbId");
     expect(compact[0]?.rating).toBe(7.1);
     expect(compact[0]?.voteCount).toBe(500);
+    expect(compact[0]?.releaseYear).toBe(2020);
+    expect(compact[0]?.posterPath).toBe("/movie.jpg");
+    expect(compact[1]?.voteCount).toBe(0);
     expect(validateCatalog(compact)).toEqual([]);
   });
 

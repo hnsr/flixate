@@ -73,7 +73,7 @@ export function CatalogCard(props: CatalogCardProps): React.JSX.Element {
             <div className="title-kicker">
               <span>{props.title.mediaType === "show" ? "Series" : "Film"}</span>
               <span aria-hidden="true">·</span>
-              <span>{props.title.releaseYear}</span>
+              <span>{props.title.releaseYear ?? "Year unknown"}</span>
             </div>
             <h3>{props.title.title}</h3>
           </div>

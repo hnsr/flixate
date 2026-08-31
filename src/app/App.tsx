@@ -133,6 +133,13 @@ export function App(): React.JSX.Element {
     month: "short",
     year: "numeric",
   });
+  const catalogAgeDays = Math.floor(
+    (Date.now() - new Date(catalogState.catalog.createdAt).getTime()) / (24 * 60 * 60 * 1000),
+  );
+  const freshnessWarning = catalogState.catalog.loadWarning
+    ?? (!catalogState.catalog.fixture && catalogAgeDays > 14
+      ? "This catalog is older than two weeks. The scheduled refresh may need attention."
+      : null);
 
   return (
     <div className="app-shell">
@@ -142,7 +149,12 @@ export function App(): React.JSX.Element {
           <span>flixate</span>
         </a>
         <div className="topbar-actions">
-          <span className="fixture-badge" title="Phase 1 uses a representative local catalog">Phase 1 fixture</span>
+          <span
+            className="fixture-badge"
+            title={catalogState.catalog.fixture ? "Development uses a representative local catalog" : "Validated US+NL catalog snapshot"}
+          >
+            {catalogState.catalog.fixture ? "Development fixture" : "US + NL catalog"}
+          </span>
           <button className="text-button" type="button" onClick={() => downloadBackup(userState, filters)}>Export</button>
           <button className="text-button" type="button" onClick={() => importInput.current?.click()}>Import</button>
           <input
@@ -163,7 +175,10 @@ export function App(): React.JSX.Element {
             <h1>Find the one<br />worth your evening.</h1>
           </div>
           <div className="hero-meta" aria-label="Catalog summary">
-            <div><strong>{catalogState.catalog.titles.length}</strong><span>curated fixture titles</span></div>
+            <div>
+              <strong>{catalogState.catalog.titles.length.toLocaleString("en-US")}</strong>
+              <span>{catalogState.catalog.fixture ? "fixture titles" : "streaming titles"}</span>
+            </div>
             <div><strong>{seenKeys.size}</strong><span>marked seen</span></div>
             <div><strong>US + NL</strong><span>availability union</span></div>
           </div>
@@ -197,6 +212,7 @@ export function App(): React.JSX.Element {
         <div className="catalog-layout">
           <FiltersPanel settings={filters} genres={genres} onChange={setFilters} />
           <section className="results-panel" aria-labelledby="results-heading">
+            {freshnessWarning && <p className="catalog-warning" role="status">{freshnessWarning}</p>}
             <div className="results-heading">
               <div>
                 <span className="eyebrow">The shortlist</span>

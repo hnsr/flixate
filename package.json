@@ -9,6 +9,8 @@
     "preview": "vite preview",
     "phase0": "node --env-file-if-exists=.env --import tsx scripts/phase0.ts",
     "phase0:sample": "npm run phase0 -- --sample",
+    "catalog": "node --env-file-if-exists=.env --import tsx scripts/catalog.ts",
+    "catalog:sample": "npm run catalog -- --sample --output-dir artifacts/catalog-sample",
     "benchmark:browser": "node --import tsx scripts/browser-benchmark.ts",
     "test": "vitest run",
     "test:watch": "vitest",

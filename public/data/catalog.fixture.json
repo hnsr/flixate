@@ -9,6 +9,7 @@
   },
   "synopsisShards": {
     "count": 4,
+    "format": "json",
     "pattern": "data/synopsis/{shard}.json"
   },
   "titles": [

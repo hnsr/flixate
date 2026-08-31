@@ -55,7 +55,7 @@ export function filterAndSortTitles(
     } else if (settings.sort === "votes") {
       comparison = right.voteCount - left.voteCount;
     } else if (settings.sort === "year") {
-      comparison = right.releaseYear - left.releaseYear;
+      comparison = compareNullableDescending(left.releaseYear, right.releaseYear);
     } else {
       comparison = left.title.localeCompare(right.title);
     }

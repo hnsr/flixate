@@ -1,0 +1,51 @@
+name: Validate catalog snapshot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catalog-snapshot
+  cancel-in-progress: false
+
+jobs:
+  build-catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      TMDB_API_TOKEN: ${{ secrets.TMDB_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: actions/cache/restore@v4
+        id: tmdb-cache
+        with:
+          path: .cache/phase0
+          key: tmdb-discovery-${{ github.run_id }}
+      - name: Build and validate US+NL snapshot
+        run: npm run catalog -- --resume-cache
+      - uses: actions/cache/save@v4
+        if: always() && steps.tmdb-cache.outputs.cache-hit != 'true'
+        with:
+          path: .cache/phase0
+          key: tmdb-discovery-${{ github.run_id }}
+      - run: npm test
+      - run: npm run typecheck
+      - name: Build the production app against the snapshot
+        env:
+          VITE_CATALOG_MANIFEST_URL: data/live/manifest.json
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flixate-catalog-${{ github.run_id }}
+          path: public/data/live/
+          if-no-files-found: error
+          retention-days: 14

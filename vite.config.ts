@@ -30,6 +30,15 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,svg}"],
         runtimeCaching: [
           {
+            urlPattern: ({ url }) => url.pathname.endsWith("/data/live/manifest.json"),
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "flixate-catalog-manifest",
+              networkTimeoutSeconds: 4,
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
             urlPattern: ({ url }) => url.pathname.endsWith("/data/catalog.fixture.json"),
             handler: "NetworkFirst",
             options: {
@@ -39,11 +48,29 @@ export default defineConfig({
             },
           },
           {
+            urlPattern: ({ url }) => /\/data\/live\/catalog-[a-f0-9]+\.json\.gz\.bin$/.test(url.pathname),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "flixate-core-catalog",
+              expiration: { maxEntries: 3, maxAgeSeconds: 60 * 60 * 24 * 45 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
             urlPattern: ({ url }) => url.pathname.includes("/data/synopsis/"),
             handler: "CacheFirst",
             options: {
               cacheName: "flixate-synopses",
               expiration: { maxEntries: 12, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.includes("/data/live/synopsis/"),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "flixate-synopses",
+              expiration: { maxEntries: 24, maxAgeSeconds: 60 * 60 * 24 * 30 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },
