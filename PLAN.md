@@ -1,24 +1,23 @@
 # Flixate product and architecture plan
 
-Status: revised proposal, researched 2026-08-30
+Status: revised proposal, researched through 2026-08-31
 
 Scope clarification: the user wants to discover titles that are streamable
 somewhere, but does not need to know the qualifying service. Version 1 uses the
 combined US and Netherlands streaming catalogs as a deliberately simple, broad,
 personally relevant approximation rather than crawling every country.
-The only required display metadata is title, movie/show type, and genres, alongside
-the previously requested quality score and source link. Version 1 uses TMDB's
-0–10 user score and vote count. IMDb and Rotten Tomatoes are possible later
-adapters, not MVP dependencies.
-Poster and synopsis are optional. Shows use one overall series record and score;
-seasons and episodes are out of scope.
+The MVP display metadata is title, release year, movie/show type, genres, poster,
+short synopsis, quality score, and source link. Version 1 uses TMDB's 0–10 user
+score and vote count. IMDb and Rotten Tomatoes are possible later adapters, not MVP
+dependencies. Shows use one overall series record and score; seasons and episodes
+are out of scope.
 
 ## Quick glossary
 
 - **TMDB (The Movie Database):** an online movie/TV database with a developer API.
-  Flixate uses it for titles, movie/show type, genres, quality scores, optional
-  artwork/synopses, and determining whether something is streamable in the US or
-  Netherlands.
+  Flixate uses it for titles, release years, movie/show type, genres, quality
+  scores, posters, synopses, and determining whether something is streamable in
+  the US or Netherlands.
 - **JustWatch:** a service that tracks where movies and shows are available to
   stream. TMDB exposes availability data supplied by JustWatch, so Flixate can use
   it through TMDB without integrating every streaming service separately. Flixate
@@ -66,7 +65,7 @@ of friends, with these conditions and small frictions:
 | --- | --- | --- |
 | GitHub Pages | $0 | The repository, deployed app, and generated catalog are public on GitHub Free; use the supplied `github.io` URL rather than buying a domain |
 | GitHub Actions | $0 | Standard runners are free for public repositories, but GitHub disables scheduled workflows after 60 days without repository activity; provide a manual Refresh workflow and show catalog age |
-| TMDB metadata/API | $0 | Register for a developer API key, remain non-commercial, show required attribution, refresh cached TMDB content within its six-month limit, and respect rate limits |
+| TMDB metadata/API and poster CDN | $0 | Register for a developer API key, remain non-commercial, show required attribution, refresh cached TMDB content within its six-month limit, respect rate limits, and lazy-load modest poster sizes |
 | JustWatch-derived eligibility | $0 through TMDB | JustWatch attribution is mandatory; no separate Watchmode/JustWatch subscription is planned |
 | TMDB ratings | $0 through TMDB | `vote_average` and `vote_count` arrive in discovery results, so no second data source, title mapping, or rating import is needed |
 | IMDb ratings | Not used in MVP | Reconsider after the app is useful; its mapping and distribution constraints do not affect version 1 |
@@ -127,10 +126,12 @@ and deep-link advantages are no longer useful for this product.
                          |
           +--------------+----------------+
           |                               |
-  catalog including TMDB scores   private user-state map
+  core catalog + synopsis shards  private user-state map
   cached by the PWA               in localStorage (`seen`)
                                           |
                                  JSON export / import
+
+  Poster paths come from discovery; poster images load lazily from TMDB's CDN.
 ```
 
 The deployed app and catalog are public, because free GitHub Pages does not offer
@@ -155,10 +156,18 @@ record is unrated. Do not impose a hard minimum-vote cutoff on catalog inclusion
 retain vote count so users can filter it and the UI can mark scores based on fewer
 than 50 votes as low-confidence.
 
-TMDB discovery already returns poster paths and short overviews. Preserve them only
-as an optional build output after the core version is proven; they do not require a
-separate metadata crawl. If posters are enabled, load them from TMDB's image CDN
-and do not copy image files into the repository or Pages artifact.
+TMDB discovery already returns release/first-air date, poster path, and short
+overview, so these MVP fields require no per-title enrichment crawl or additional
+data provider. Store only the year in the core catalog. Store the poster path there
+too, but load an appropriately sized image lazily from TMDB's image CDN; do not copy
+poster files into the repository or Pages artifact. The builder may read TMDB's
+configuration once per run to publish the supported image base URL and size.
+
+Keep synopses out of the core catalog because the text materially increases initial
+download and parse cost. Publish them in deterministic, compressed static shards
+indexed by stable title key. Fetch a shard only when the user expands a title, and
+use a clear fallback when TMDB has no English overview. No runtime TMDB credential
+is needed.
 
 Required UI credits:
 
@@ -215,14 +224,16 @@ mix TMDB and Rotten Tomatoes values as though they were the same rating system.
 3. Union and deduplicate results by `(mediaType, tmdbId)`. When a title occurs in
    both regions, select display fields deterministically using a fixed region
    preference so identical source snapshots produce identical artifacts.
-4. Copy TMDB's score and vote count from the discovery response; no per-title
-   enrichment request or rating import is needed.
+4. Copy TMDB's release/first-air year, poster path, overview, score, and vote count
+   from the discovery response; no per-title enrichment request or rating import is
+   needed.
 5. Remove adult titles, seasons, episodes, and other non-top-level types. Retain
    zero-vote titles, but label them as unrated rather than dropping them.
-6. Dictionary-encode genres and generate the compact catalog.
+6. Dictionary-encode genres and generate the compact core catalog containing year
+   and poster path. Generate deterministic synopsis shards separately.
 7. Validate per-region and union counts, referential integrity, duplicate IDs,
-   catalog size, score coverage, and a sample of US and Netherlands discovery
-   membership before deployment.
+   core/shard sizes, metadata and score coverage, and a sample of US and Netherlands
+   discovery membership before deployment.
 8. Deploy through the official Pages artifact flow. Do not commit generated catalog
    files to normal Git history.
 
@@ -256,11 +267,21 @@ deferred IMDb integration is not part of this workflow.
 
 ### Static data format
 
-Start with one compact compressed JSON catalog plus a small manifest. Cache the last
-good response through the PWA Cache API, parse it in a Web Worker, and query it in
-memory. Activate a new version only after its hash and schema validate. Add
-IndexedDB, SQLite-WASM, or sharding only if Phase 0 measurements show they are
+Use one compact compressed core catalog, deterministic compressed synopsis shards,
+and a small manifest. The core contains everything needed to search, filter, sort,
+and render collapsed result cards. Fetch a synopsis shard only when a title is
+expanded. Cache the last good core response through the PWA Cache API, parse it in
+a Web Worker, and query it in memory. Activate a new version only after its hash and
+schema validate. Explicitly decompress static `.gz` bytes in the worker rather than
+depending on GitHub Pages to supply a `Content-Encoding` header. Add IndexedDB,
+SQLite-WASM, or further core-catalog partitioning only if measurements show they are
 needed.
+
+Phase 0 projections for the full union are 4.43 MB compressed for year plus the
+current compact fields and 8.42 MB after adding poster paths. Putting all synopses
+in that same file would raise it to 30.38 MB, which is why synopsis delivery is
+separate. Target synopsis shards small enough that expanding one title downloads
+only a few hundred kilobytes at most.
 
 Suggested manifest fields:
 
@@ -270,7 +291,9 @@ Suggested manifest fields:
 - title, movie, and series counts plus the source regions (`US` and `NL`);
 - coverage/bootstrap status;
 - catalog URL, hash, and byte size;
+- synopsis shard scheme, URLs, hashes, and byte sizes;
 - score source and low-confidence vote threshold;
+- TMDB poster base URL and selected image size;
 - attribution version.
 
 Suggested title record:
@@ -278,10 +301,16 @@ Suggested title record:
 - stable key: `movie:{tmdbId}` or `tv:{tmdbId}`;
 - TMDB ID;
 - display title;
+- release/first-air year;
 - media type (`movie` or `show`);
 - genre IDs;
 - TMDB rating and vote count when at least one vote exists;
-- optionally, poster path and short overview.
+- poster path when available.
+
+Suggested synopsis-shard record:
+
+- stable title key;
+- short TMDB overview.
 
 If the Phase 0 measurements show excessive memory use, a first load above roughly
 10 seconds on a mid-range phone, or poor multi-filter latency, compare IndexedDB,
@@ -355,6 +384,10 @@ only after there is a demonstrated cross-device need.
 ### MVP interactions
 
 - compact virtualized movie/show list or card grid;
+- release/first-air year and a lazy-loaded poster with a neutral missing-image
+  placeholder;
+- expandable title details containing the short synopsis or a clear unavailable
+  state;
 - instant title search;
 - one-click seen/unseen toggle on every result;
 - three-state seen filter: hide seen (default), show all, seen only;
@@ -375,10 +408,13 @@ Useful defaults:
 - rent and buy alone do not make a title eligible;
 - hide adult content;
 - do not hide unrated titles unless explicitly requested.
+- keep titles with missing posters or synopses visible and show intentional fallback
+  states;
+- guarantee offline access to the app shell, core catalog, and user state; uncached
+  posters and synopsis shards may be unavailable while offline.
 
 ### Later features
 
-- poster and short synopsis, if the text-first interface feels too sparse;
 - shareable filter presets;
 - watchlist/"maybe" state separate from seen;
 - personal rating and notes;
@@ -422,6 +458,8 @@ commands, measurements, and remaining caveats. The result is a go for Phase 1.
 - Prove date partitioning for discovery result sets.
 - Measure TMDB score coverage and compare a sample with IMDb to confirm it is
   adequate for quick quality filtering.
+- Measure release-year, poster-path, and overview coverage plus their projected core
+  and sharded payload sizes.
 - Test the resulting scored catalog in desktop and mobile-class browsers.
 - Verify that only top-level shows enter the output; seasons and episodes remain
   out of scope.
@@ -434,18 +472,22 @@ no runtime key leaks.
 
 ### Phase 1 — local-first vertical slice (medium)
 
-- Build the compact result view, TMDB link, and seen toggle.
+- Build the compact result card with title, year, poster, score, TMDB link, expandable
+  synopsis, and seen toggle.
 - Add persistent local state, backup export/import, and core filters.
-- Use a small US+NL fixture so UI work is fast and deterministic.
+- Use a small US+NL core fixture plus synopsis shards so UI work is fast and
+  deterministic, including missing-poster and missing-synopsis cases.
 - Add unit tests for filtering and state migrations plus an end-to-end seen flow.
+- Lazy-load posters and synopsis shards; bound runtime image caching rather than
+  pre-caching the complete poster corpus.
 
 Exit gate: the app is already useful on one device and survives reloads, upgrades,
 and backup round-trips.
 
 ### Phase 2 — US+NL catalog pipeline (medium)
 
-- Implement restartable two-region discovery, deduplication, TMDB score retention,
-  compaction, and validation.
+- Implement restartable two-region discovery, deduplication, TMDB metadata/score
+  retention, core-catalog compaction, synopsis sharding, and validation.
 - Add progressive bootstrap if one run is too large.
 - Add the weekly rebuild and raw-response caching/checkpointing.
 - Produce coverage and freshness summaries in Action job output and the manifest.
@@ -459,6 +501,8 @@ good data.
 - Build and deploy with the official Pages Actions flow.
 - Store the TMDB credential in Actions secrets.
 - Add PWA caching, update notification, Credits/About, and error recovery.
+- Verify explicit catalog/shard decompression and TMDB image CDN behavior on the
+  deployed Pages site.
 - Document one-time setup and how to run a manual refresh.
 - Document GitHub's 60-day public-repository schedule disablement and how to
   re-enable the workflow.
@@ -470,7 +514,6 @@ disablement is documented and takes only a manual workflow re-enable/run.
 ### Phase 4 — refinement (medium)
 
 - Add remaining filters, presets, accessibility, keyboard use, and responsive polish.
-- Add optional posters/synopses if they materially improve discovery.
 - Tune parse/query performance from real catalog measurements and shard only if
   necessary.
 - Add snapshot-age and coverage indicators.
@@ -486,6 +529,9 @@ disablement is documented and takes only a manual workflow re-enable/run.
 ## Acceptance criteria for version 1
 
 - A user can browse the defined US+NL streaming union and see the snapshot date.
+- Each title shows its release/first-air year and a poster or intentional placeholder.
+- Expanding a title shows its TMDB synopsis or an intentional unavailable state
+  without loading the complete synopsis dataset up front.
 - A title with votes shows its TMDB score and vote count and links to the matching
   TMDB movie or show page.
 - Every browser receives automatically refreshed TMDB ratings without a second API,
@@ -497,6 +543,8 @@ disablement is documented and takes only a manual workflow re-enable/run.
 - Personal state is absent from the repository, Pages deployment, logs, and URLs.
 - API credentials are absent from all client assets and generated data.
 - The last valid catalog and user state remain usable after a failed refresh.
+- Offline use preserves the searchable/filterable core catalog and seen state;
+  unavailable uncached posters or synopsis shards degrade to their normal fallback.
 - The app includes all source attribution required by TMDB and JustWatch.
 - The catalog artifact and traffic remain comfortably below GitHub Pages' 1 GB
   published-site and 100 GB/month soft bandwidth limits.
@@ -509,6 +557,8 @@ disablement is documented and takes only a manual workflow re-enable/run.
 | Initial TMDB crawl is too slow or unfriendly to the API | Throttle, back off, partition, cache responses, and checkpoint progress |
 | Streamable/not-streamable membership becomes stale | Weekly clean US+NL rebuild and a visible snapshot date |
 | Low-vote TMDB scores are noisy or diverge from IMDb | Show vote count, identify fewer than 50 votes as low-confidence, and support a minimum-votes filter |
+| Poster CDN requests make scrolling slow or waste bandwidth | Virtualize results, request a modest image size, lazy-load images, and use a bounded runtime cache plus placeholders |
+| Synopses make the initial catalog too large | Keep them in deterministic static shards loaded only when title details are expanded |
 | Rotten Tomatoes looks like an easy fallback but has no self-service free feed | Use TMDB for version 1; use RT only through approved licensed access and never scrape it |
 | Large catalog performs poorly on phones | Worker parsing, validated cache swaps, virtual grid, benchmark before production rollout |
 | GitHub Pages is mistaken for a private site | Store no personal data there; document that the URL and assets are public |
@@ -526,6 +576,7 @@ disablement is documented and takes only a manual workflow re-enable/run.
 - [TMDB non-commercial use and attribution FAQ](https://developer.themoviedb.org/docs/faq)
 - [TMDB API terms, including attribution and six-month cache limit](https://www.themoviedb.org/api-terms-of-use)
 - [TMDB rate limiting guidance](https://developer.themoviedb.org/docs/rate-limiting)
+- [TMDB image URL and size configuration](https://developer.themoviedb.org/docs/image-basics)
 - [TMDB top-rated list and vote-count behavior](https://developer.themoviedb.org/reference/movie-top-rated-list)
 - [IMDb non-commercial datasets](https://www.imdb.com/interfaces/)
 - [IMDb guidance for software use](https://help.imdb.com/article/imdb/general-information/can-i-use-imdb-data-in-my-software/G5JTRESSHJBBHTGX)

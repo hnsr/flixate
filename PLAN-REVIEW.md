@@ -1,6 +1,6 @@
 # Flixate plan review
 
-Reviewed: 2026-08-30
+Reviewed: 2026-08-31
 
 ## Verdict
 
@@ -12,7 +12,9 @@ coverage trade-off. The remaining findings are definitional or implementation
 details that can be resolved without adding hosting, a database, or paid services.
 The completed Phase 0 run confirms that implementation can proceed to Phase 1.
 Choosing TMDB scoring removes the only unusually expensive bootstrap and the only
-MVP data-republication concern; there are no known blockers.
+MVP data-republication concern. Promoting year, poster, and synopsis to the MVP does
+not introduce another provider or credential; the planned core/shard split keeps
+the startup payload controlled. There are no known blockers.
 
 ## Most important findings
 
@@ -21,9 +23,10 @@ MVP data-republication concern; there are no known blockers.
 Querying only the US and Netherlands bounds the supported-regions multiplier at two.
 The completed Phase 0 run found 171,436 unique titles. The original end-to-end run
 finished in 11 minutes 45 seconds, including 1,000 diagnostic lookups that are no
-longer needed, with no rate-limit responses. The final TMDB-scored catalog is 4.14
-MB compressed. This fits comfortably inside free GitHub Actions and Pages limits,
-and there is no separate score-mapping bootstrap.
+longer needed, with no rate-limit responses. The measured score-only catalog is
+4.14 MB compressed; adding year and poster path projects to 8.42 MB. This fits
+comfortably inside free GitHub Actions and Pages limits, and there is no separate
+score-mapping or metadata-enrichment bootstrap.
 
 The premise that the US contains every streamable title is not correct. Availability
 is licensed by country; Netflix, for example, explicitly says that its library
@@ -83,12 +86,12 @@ The plan correctly treats Documentary as a genre shortcut spanning movies and
 series rather than as a third media type. The implementation still needs to account
 for TMDB's separate movie and TV genre vocabularies when applying that shortcut.
 
-### 6. A release year is probably worth retaining
+### 6. Release year is now correctly part of the MVP
 
-The proposed title record cannot visibly distinguish two shows or remakes with the
-same title. Examples such as different versions of *The Office* would otherwise be
-identical until someone follows the TMDB link. Year is tiny in storage terms and
-unusually valuable here.
+The title record now distinguishes shows and remakes with the same name, such as
+different versions of *The Office*. All 171,436 titles in the measured union had a
+captured release/first-air year, and adding it increases the compressed core by only
+about 0.29 MB.
 
 ### 7. Movie and TV genre labels need a defined relationship
 
@@ -149,3 +152,18 @@ The same title can now be encountered in both regions. The revised plan specifie
 `language=en-US` and a fixed region preference for selecting display fields.
 Deduplication and output sorting should also remain deterministic so identical
 source snapshots produce identical artifacts.
+
+### 15. Posters and synopses need different delivery strategies
+
+Poster paths and overviews already arrive in discovery, with measured coverage of
+94.9% and 96.4% respectively, so neither requires another service or per-title API
+call. Poster paths belong in the core catalog while image bytes should load lazily
+from TMDB's CDN with a placeholder and bounded cache.
+
+Synopses are different: embedding every overview raises the projected compressed
+catalog from 8.42 MB to 30.38 MB and the uncompressed JSON to 83.44 MB. Keeping
+overview records in deterministic, on-demand static shards preserves the feature
+without imposing that startup cost. Missing English overviews and unavailable
+images must remain normal, tested states.
+
+Reference: [TMDB image basics](https://developer.themoviedb.org/docs/image-basics)

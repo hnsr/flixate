@@ -14,6 +14,11 @@ in the discovery response, so the pipeline needs no per-title IMDb-ID lookup and
 separate ratings import. This removes the previously projected 2.6-hour one-time
 mapping bootstrap and the IMDb redistribution question from the MVP.
 
+Release year, poster, and synopsis also come directly from those same discovery
+responses. They require no additional provider or per-title enrichment crawl. The
+MVP will keep year and poster path in the core catalog and publish synopses as
+on-demand static shards.
+
 ## Live measurements
 
 The original uncached run used a conservative limit of 18 requests per second with
@@ -37,6 +42,9 @@ calls.
 | Original retries / rate-limit responses | 0 / 0 |
 | Compressed TMDB-scored catalog | 4,139,803 bytes |
 | Uncompressed JSON | 22,505,642 bytes |
+| Projected core with release year | 4,432,730 bytes compressed |
+| Projected core with release year and poster path | 8,422,351 bytes compressed |
+| Projected monolithic year/poster/synopsis catalog (rejected) | 30,376,240 bytes compressed |
 | Decompress + parse median on this machine | 125.292 ms |
 | Filter-query p95 on this machine | 37.811 ms |
 | Mobile-class Chrome download + decompress (4× CPU throttle) | 363.8 ms |
@@ -52,7 +60,9 @@ additional complexity.
 The headless Chrome run used a 390×844 mobile viewport and 4× CPU throttling. Its
 reported 52 MB JavaScript heap, 238 ms JSON parse, and 17 ms filter scan are
 reasonable for a first implementation. An actual phone test remains part of the
-Phase 1 UI slice, but sharding or IndexedDB is not justified yet.
+Phase 1 UI slice. Core-catalog sharding or IndexedDB is not justified yet; synopsis
+shards are a deliberate optional-detail delivery strategy rather than a core
+performance requirement.
 
 ## TMDB scoring decision
 
@@ -78,6 +88,26 @@ Flixate should always label the value as TMDB, retain vote count, offer a
 minimum-votes filter, and treat fewer than 50 votes as low-confidence rather than
 silently dropping the title. A numeric score threshold naturally excludes unrated
 records. IMDb remains a possible post-MVP adapter.
+
+## MVP metadata decision
+
+The cached discovery responses were measured against the complete union:
+
+| Field | Titles covered | Coverage |
+| --- | ---: | ---: |
+| Release/first-air year | 171,436 | 100% |
+| Poster path | 162,707 | 94.9% |
+| Non-empty overview | 165,253 | 96.4% |
+
+Adding year to the compact catalog costs about 0.29 MB compressed. Adding poster
+paths brings the projected core to 8.42 MB compressed; the poster image bytes are
+not stored in the catalog or Pages artifact and will load lazily from TMDB's CDN.
+
+Embedding all overviews in the same file would produce 83,437,495 bytes of JSON and
+30,376,240 compressed bytes. Even truncating every overview to 160 characters still
+projects to 20,606,325 compressed bytes. The MVP will therefore publish complete
+short overviews in deterministic static shards and load one only when title details
+are expanded. Missing poster and synopsis states are expected, not build errors.
 
 ## Discovery completeness
 
@@ -130,8 +160,9 @@ only in the ignored `.env` file locally and in GitHub Actions secrets remotely.
 
 - Accept that TMDB may qualify a show when only some seasons are streamable.
 - Add Documentary as a cross-media genre preset.
-- Retain release year to distinguish identically named titles; this is recommended.
 - Define a small canonical mapping between TMDB's movie and TV genre vocabularies.
 - Make the score threshold/unrated behavior explicit in tests and UI copy.
+- Select the exact synopsis shard count/size after measuring the Phase 2 output;
+  target at most a few hundred compressed kilobytes per on-demand fetch.
 - Confirm the simulated mobile-class measurements on a real phone during the Phase
   1 vertical slice.
