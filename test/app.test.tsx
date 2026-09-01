@@ -43,4 +43,20 @@ describe("Flixate app", () => {
     await waitFor(() => expect(screen.queryByText("Arrival")).not.toBeInTheDocument());
     expect(localStorage.getItem("flixate:user-state:v1")).toContain('"seen":true');
   });
+
+  it("updates the search input immediately and applies the catalog query after a debounce", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(await screen.findByText("Unrated Show")).toBeInTheDocument();
+    const search = screen.getByRole("searchbox", { name: "Search titles" });
+    await user.type(search, "Arrival");
+
+    expect(search).toHaveValue("Arrival");
+    expect(screen.getByText("Unrated Show")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Search and sort" })).toHaveAttribute("aria-busy", "true");
+
+    await waitFor(() => expect(screen.queryByText("Unrated Show")).not.toBeInTheDocument());
+    expect(screen.getByRole("region", { name: "Search and sort" })).toHaveAttribute("aria-busy", "false");
+  });
 });

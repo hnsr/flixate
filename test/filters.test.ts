@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_FILTERS, type CoreTitle, type TitleKey } from "../src/domain/catalog.js";
-import { filterAndSortTitles } from "../src/domain/filters.js";
+import {
+  createCatalogFilterIndex,
+  filterAndSortTitles,
+  filterCatalogIndex,
+  sortedTitleIndexes,
+} from "../src/domain/filters.js";
 
 const titles: CoreTitle[] = [
   { key: "movie:1", tmdbId: 1, title: "Documented", releaseYear: 2020, mediaType: "movie", genreIds: [99], rating: 8.1, voteCount: 500 },
@@ -47,5 +52,23 @@ describe("catalog filters", () => {
       new Set<TitleKey>(["movie:4"]),
     );
     expect(result.map((title) => title.key)).toEqual(["movie:4"]);
+  });
+
+  it("normalizes search text once and reuses cached sort orders", () => {
+    const index = createCatalogFilterIndex(titles);
+    expect(index.normalizedTitles).toEqual([
+      "documented",
+      "action show",
+      "unrated",
+      "action drama",
+    ]);
+
+    const firstOrder = sortedTitleIndexes(index, "rating");
+    expect(sortedTitleIndexes(index, "rating")).toBe(firstOrder);
+    expect(filterCatalogIndex(
+      index,
+      { ...DEFAULT_FILTERS, query: "ACTION" },
+      new Set(),
+    ).map((title) => title.title)).toEqual(["Action Show", "Action Drama"]);
   });
 });

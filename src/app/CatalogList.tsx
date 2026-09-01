@@ -1,5 +1,5 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useRef } from "react";
+import { memo, useCallback, useRef } from "react";
 import { SynopsisRepository } from "../data/catalog.js";
 import type { CatalogDocument, CoreTitle, TitleKey } from "../domain/catalog.js";
 import { CatalogCard } from "./CatalogCard.js";
@@ -11,16 +11,23 @@ type CatalogListProps = {
   onToggleSeen: (key: TitleKey) => void;
 };
 
-export function CatalogList(props: CatalogListProps): React.JSX.Element {
+export const CatalogList = memo(function CatalogList(props: CatalogListProps): React.JSX.Element {
   const scrollElement = useRef<HTMLDivElement>(null);
   const synopsisRepository = useRef(new SynopsisRepository()).current;
+  const getScrollElement = useCallback(() => scrollElement.current, []);
+  const estimateSize = useCallback(() => 226, []);
+  const getItemKey = useCallback(
+    (index: number) => props.titles[index]?.key ?? index,
+    [props.titles],
+  );
   const virtualizer = useVirtualizer({
     count: props.titles.length,
-    getScrollElement: () => scrollElement.current,
-    estimateSize: () => 226,
+    getScrollElement,
+    estimateSize,
     overscan: 5,
-    getItemKey: (index) => props.titles[index]?.key ?? index,
+    getItemKey,
   });
+  const measureList = useCallback(() => virtualizer.measure(), [virtualizer]);
 
   if (props.titles.length === 0) {
     return (
@@ -69,7 +76,7 @@ export function CatalogList(props: CatalogListProps): React.JSX.Element {
                 seen={props.seenKeys.has(title.key)}
                 synopsisRepository={synopsisRepository}
                 onToggleSeen={() => props.onToggleSeen(title.key)}
-                onSizeChange={() => virtualizer.measure()}
+                onSizeChange={measureList}
               />
             </div>
           );
@@ -77,4 +84,4 @@ export function CatalogList(props: CatalogListProps): React.JSX.Element {
       </div>
     </div>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createBackup,
   normalizeFilterSettings,
@@ -8,7 +8,7 @@ import {
   type ImportPreview,
 } from "../domain/backup.js";
 import { availableGenres, DEFAULT_FILTERS, type FilterSettings, type TitleKey } from "../domain/catalog.js";
-import { filterAndSortTitles } from "../domain/filters.js";
+import { createCatalogFilterIndex, filterCatalogIndex } from "../domain/filters.js";
 import {
   loadUserState,
   mergeUserStates,
@@ -23,6 +23,7 @@ import { usePersistentState } from "../hooks/use-persistent-state.js";
 import { CatalogList } from "./CatalogList.js";
 import { FiltersPanel } from "./FiltersPanel.js";
 import { ImportDialog } from "./ImportDialog.js";
+import { SearchBar } from "./SearchBar.js";
 
 const SETTINGS_KEY = "flixate:filters:v1";
 
@@ -56,6 +57,7 @@ export function App(): React.JSX.Element {
   const catalogState = useCatalog();
   const importInput = useRef<HTMLInputElement>(null);
   const [filters, setFilters] = usePersistentState(SETTINGS_KEY, DEFAULT_FILTERS, normalizeFilterSettings);
+  const searchDraft = useRef(filters.query);
   const [userState, setUserState] = useState(() => loadUserState(localStorage));
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -90,9 +92,13 @@ export function App(): React.JSX.Element {
   const seenKeys = useMemo(() => seenTitleKeys(userState), [userState]);
   const catalog = catalogState.status === "ready" ? catalogState.catalog : null;
   const genres = useMemo(() => catalog ? availableGenres(catalog.titles) : [], [catalog]);
+  const catalogIndex = useMemo(
+    () => catalog ? createCatalogFilterIndex(catalog.titles) : null,
+    [catalog],
+  );
   const titles = useMemo(
-    () => catalog ? filterAndSortTitles(catalog.titles, filters, seenKeys) : [],
-    [catalog, filters, seenKeys],
+    () => catalogIndex ? filterCatalogIndex(catalogIndex, filters, seenKeys) : [],
+    [catalogIndex, filters, seenKeys],
   );
 
   const handleImport = async (file: File | undefined) => {
@@ -115,6 +121,26 @@ export function App(): React.JSX.Element {
     setNotice("Backup merged. Your newer local changes were kept.");
   };
 
+  const toggleTitle = useCallback(
+    (key: TitleKey) => setUserState((current) => toggleSeen(current, key)),
+    [],
+  );
+  const updateQuery = useCallback(
+    (query: string) => setFilters((current) => current.query === query
+      ? current
+      : { ...current, query }),
+    [setFilters],
+  );
+  const updateSearchDraft = useCallback((query: string) => {
+    searchDraft.current = query;
+  }, []);
+  const updateSort = useCallback(
+    (sort: FilterSettings["sort"]) => setFilters((current) => current.sort === sort
+      ? current
+      : { ...current, sort }),
+    [setFilters],
+  );
+
   if (catalogState.status === "loading") return <LoadingState />;
   if (catalogState.status === "error") {
     return (
@@ -127,7 +153,6 @@ export function App(): React.JSX.Element {
     );
   }
 
-  const toggleTitle = (key: TitleKey) => setUserState((current) => toggleSeen(current, key));
   const refreshed = new Date(catalogState.catalog.createdAt).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
@@ -155,7 +180,11 @@ export function App(): React.JSX.Element {
           >
             {catalogState.catalog.fixture ? "Development fixture" : "US + NL catalog"}
           </span>
-          <button className="text-button" type="button" onClick={() => downloadBackup(userState, filters)}>Export</button>
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => downloadBackup(userState, { ...filters, query: searchDraft.current })}
+          >Export</button>
           <button className="text-button" type="button" onClick={() => importInput.current?.click()}>Import</button>
           <input
             ref={importInput}
@@ -184,30 +213,13 @@ export function App(): React.JSX.Element {
           </div>
         </section>
 
-        <section className="search-bar" aria-label="Search and sort">
-          <label className="search-field">
-            <span className="visually-hidden">Search titles</span>
-            <span aria-hidden="true" className="search-symbol">⌕</span>
-            <input
-              type="search"
-              placeholder="Search films and series…"
-              value={filters.query}
-              onChange={(event) => setFilters({ ...filters, query: event.target.value })}
-            />
-            {filters.query && (
-              <button type="button" aria-label="Clear search" onClick={() => setFilters({ ...filters, query: "" })}>×</button>
-            )}
-          </label>
-          <label className="sort-field">
-            <span>Sort</span>
-            <select value={filters.sort} onChange={(event) => setFilters({ ...filters, sort: event.target.value as FilterSettings["sort"] })}>
-              <option value="rating">Highest score</option>
-              <option value="votes">Most votes</option>
-              <option value="year">Newest first</option>
-              <option value="title">Title A–Z</option>
-            </select>
-          </label>
-        </section>
+        <SearchBar
+          query={filters.query}
+          sort={filters.sort}
+          onDraftChange={updateSearchDraft}
+          onQueryChange={updateQuery}
+          onSortChange={updateSort}
+        />
 
         <div className="catalog-layout">
           <FiltersPanel settings={filters} genres={genres} onChange={setFilters} />

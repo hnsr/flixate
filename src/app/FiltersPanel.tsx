@@ -1,3 +1,4 @@
+import { memo } from "react";
 import {
   DEFAULT_FILTERS,
   type FilterSettings,
@@ -40,7 +41,7 @@ function Segment<T extends string>(props: {
   );
 }
 
-export function FiltersPanel({ settings, genres, onChange }: FiltersPanelProps): React.JSX.Element {
+export const FiltersPanel = memo(function FiltersPanel({ settings, genres, onChange }: FiltersPanelProps): React.JSX.Element {
   const update = <K extends keyof FilterSettings>(key: K, value: FilterSettings[K]) => {
     onChange({ ...settings, [key]: value });
   };
@@ -174,4 +175,4 @@ export function FiltersPanel({ settings, genres, onChange }: FiltersPanelProps):
       </fieldset>
     </aside>
   );
-}
+});

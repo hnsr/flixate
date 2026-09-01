@@ -79,7 +79,7 @@ VITE_CATALOG_MANIFEST_URL=data/live/manifest.json npm run build
 npm run test:e2e
 ```
 
-Current automated coverage includes 25 unit/component tests and two Chrome journeys.
+Current automated coverage includes 27 unit/component tests and two Chrome journeys.
 The Chrome journeys were also run against the complete catalog and passed in 7.1
 seconds, covering worker loading, filtering/virtualization, lazy compressed synopsis
 delivery, seen persistence, and backup export/import.
