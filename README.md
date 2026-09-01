@@ -36,6 +36,13 @@ npm run test:e2e
 npm run build
 ```
 
+## Deploy
+
+GitHub Pages deployment is prepared but needs two one-time repository settings
+before the first push: add the `TMDB_API_TOKEN` Actions secret and select GitHub
+Actions as the Pages source. See [the Phase 3 deployment report](PHASE-3.md) for the
+exact setup, refresh/recovery instructions, and first-deployment checklist.
+
 ## Project documents
 
 - [Product and architecture plan](PLAN.md)
@@ -43,3 +50,4 @@ npm run build
 - [Phase 0 feasibility report](PHASE-0.md)
 - [Phase 1 implementation report](PHASE-1.md)
 - [Phase 2 implementation report](PHASE-2.md)
+- [Phase 3 deployment report](PHASE-3.md)

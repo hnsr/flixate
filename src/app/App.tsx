@@ -26,6 +26,7 @@ import { ImportDialog } from "./ImportDialog.js";
 import { SearchBar } from "./SearchBar.js";
 
 const SETTINGS_KEY = "flixate:filters:v1";
+const REFRESH_WORKFLOW_URL = "https://github.com/hnsr/flixate/actions/workflows/catalog.yml";
 
 type PendingImport = {
   backup: FlixateBackup;
@@ -224,7 +225,14 @@ export function App(): React.JSX.Element {
         <div className="catalog-layout">
           <FiltersPanel settings={filters} genres={genres} onChange={setFilters} />
           <section className="results-panel" aria-labelledby="results-heading">
-            {freshnessWarning && <p className="catalog-warning" role="status">{freshnessWarning}</p>}
+            {freshnessWarning && (
+              <p className="catalog-warning" role="status">
+                {freshnessWarning}{" "}
+                {!catalogState.catalog.fixture && (
+                  <a href={REFRESH_WORKFLOW_URL} target="_blank" rel="noreferrer">Open refresh workflow ↗</a>
+                )}
+              </p>
+            )}
             <div className="results-heading">
               <div>
                 <span className="eyebrow">The shortlist</span>
@@ -242,7 +250,7 @@ export function App(): React.JSX.Element {
         </div>
       </main>
 
-      <footer>
+      <footer id="credits">
         <div>
           <strong>Flixate</strong>
           <p>A personal, local-first watch finder. Your seen history stays in this browser.</p>
