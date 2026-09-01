@@ -3,6 +3,8 @@ name: Deploy Flixate
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
   workflow_dispatch:
   schedule:
     - cron: "23 4 * * 1"

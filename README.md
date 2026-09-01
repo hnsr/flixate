@@ -4,6 +4,8 @@ Flixate is a local-first PWA for finding movies and series worth watching. The a
 has a representative fixture for everyday development and a production pipeline
 for the complete generated US+NL streaming catalog.
 
+Open the live app at <https://hnsr.github.io/flixate/>.
+
 ## Run locally
 
 ```bash
@@ -38,10 +40,9 @@ npm run build
 
 ## Deploy
 
-GitHub Pages deployment is prepared but needs two one-time repository settings
-before the first push: add the `TMDB_API_TOKEN` Actions secret and select GitHub
-Actions as the Pages source. See [the Phase 3 deployment report](PHASE-3.md) for the
-exact setup, refresh/recovery instructions, and first-deployment checklist.
+GitHub Pages deployment is live. A successful push to `main`, the weekly schedule,
+or a manual workflow run rebuilds the catalog and publishes the complete app. See
+[the Phase 3 deployment report](PHASE-3.md) for setup and recovery instructions.
 
 ## Project documents
 

@@ -513,14 +513,12 @@ good data.
 
 ### Phase 3 — GitHub Pages production deployment (small)
 
-Status: implementation prepared on 2026-09-01; the one-time repository settings and
-deployed-site smoke test are still pending. See [PHASE-3.md](PHASE-3.md) for setup,
-refresh/recovery instructions, and the verification checklist.
+Status: completed on 2026-09-01. See [PHASE-3.md](PHASE-3.md) for the first deployed
+snapshot measurements, live smoke-test results, and refresh/recovery instructions.
 
 - Build and deploy with the official Pages Actions flow.
 - Store the TMDB credential in Actions secrets.
-- Add PWA caching, update notification, Credits/About, and error recovery. The
-  implementation is present; deployed behavior remains to be verified.
+- Add PWA caching, update notification, Credits/About, and error recovery.
 - Verify explicit catalog/shard decompression and TMDB image CDN behavior on the
   deployed Pages site.
 - Document one-time setup and how to run a manual refresh.

@@ -147,9 +147,9 @@ intentional architectural trade-off in the user-state design.
 A repository site is normally hosted below `/flixate/`. Vite's production base,
 manifest resolution, service-worker scope, and runtime cache patterns now account
 for that prefix, and Flixate intentionally has no client-side routes. Phase 3 added
-the official Pages workflow and prompt-based service-worker updates; the deployed
-Pages headers, asset paths, and PWA scope still need their first-deployment smoke
-test after the one-time repository setup.
+the official Pages workflow and prompt-based service-worker updates. The first live
+Chrome smoke test verified the asset paths, catalog and synopsis delivery, poster
+CDN, `/flixate/` service-worker scope, and offline reload.
 
 Reference: [Vite's GitHub Pages guidance](https://vite.dev/guide/static-deploy.html)
 
