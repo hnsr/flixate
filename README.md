@@ -52,3 +52,4 @@ or a manual workflow run rebuilds the catalog and publishes the complete app. Se
 - [Phase 1 implementation report](PHASE-1.md)
 - [Phase 2 implementation report](PHASE-2.md)
 - [Phase 3 deployment report](PHASE-3.md)
+- [Cross-device sync plan](SYNC-PLAN.md)

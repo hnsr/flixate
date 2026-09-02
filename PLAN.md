@@ -529,20 +529,35 @@ Exit gate: normal use and active scheduled refresh require no server or database
 maintenance and remain within free GitHub limits; recovery from GitHub's inactivity
 disablement is documented and takes only a manual workflow re-enable/run.
 
-### Phase 4 — refinement (medium)
+### Phase 4 — refinement (medium; after the sync track)
+
+Status: deferred until the promoted cross-device sync track has reached its go/no-go
+gate and, if viable, its initial rollout.
 
 - Add remaining filters, presets, accessibility, keyboard use, and responsive polish.
 - Tune parse/query performance from real catalog measurements and shard only if
   necessary.
 - Add snapshot-age and coverage indicators.
 
-### Phase 5 — optional sync experiment (only if needed)
+### Phase 5 — cross-device sync (promoted; execute next)
 
-- First test the dedicated-private-repo approach with a narrowly installed GitHub
-  App and a mergeable state file.
-- Threat-model browser token storage and XSS before shipping it.
-- Compare the setup and UX with a tiny Worker/KV implementation.
-- Keep JSON export/import permanently available as an escape hatch.
+Status: planned on 2026-09-01. See [SYNC-PLAN.md](SYNC-PLAN.md) for the feasibility
+gate, Google Drive `appDataFolder` design, merge model, account safety, delivery
+steps, and acceptance criteria. This track is being taken before Phase 4 without
+renumbering the existing roadmap.
+
+- First prove Google browser authorization and private Drive app-data round trips on
+  desktop Chrome, Android Chrome, and the installed PWA.
+- If the authorization UX passes, add optional per-account synchronization using
+  one conflict-resistant state document per device.
+- Keep local state authoritative while offline, never persist OAuth access tokens,
+  and preserve JSON export/import permanently.
+- Keep shared household state and any backend-based alternative out of the first
+  sync release.
+
+Exit gate: seen state converges across supported connected devices after explicit
+authorization, local-only/offline use never regresses, and Flixate still requires no
+server or database.
 
 ## Acceptance criteria for version 1
 
