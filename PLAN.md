@@ -108,21 +108,20 @@ and deep-link advantages are no longer useful for this product.
 ## Proposed architecture
 
 ```text
-                    scheduled / manual
-                   GitHub Actions run
-                           |
-          +----------------+----------------+
-          |                                 |
-   TMDB + JustWatch                  prior Pages snapshot
-   US + NL title union                 for incremental work
-          |                                 |
-          +--------------+------------------+
-                         |
-                 validate + compact
-                         |
-              GitHub Pages deployment
-                         |
-                 static Flixate PWA
+ scheduled/manual catalog workflow          push/manual app workflow
+                 |                                  |
+         TMDB + JustWatch                 latest catalog artifact
+         US + NL title union                        |
+                 |                         validate snapshot hashes
+        validate + compact                         |
+                 |                                  |
+       seven-day catalog artifact +----------------+
+                 |                                  |
+                 +---------- build app -------------+
+                                    |
+                         GitHub Pages deployment
+                                    |
+                            static Flixate PWA
                          |
           +--------------+----------------+
           |                               |
@@ -244,14 +243,22 @@ and extend the current Pages snapshot.
 
 ### Ongoing refresh
 
-Use one simple weekly schedule:
+Use one simple nightly schedule:
 
 - rebuild the US+NL union from discovery, adding newly streamable titles and removing
   titles no longer reported in either region;
 - after every successful run: publish only if validation passes, retaining the last
   good snapshot otherwise.
 
-Also expose the same updater through `workflow_dispatch`. GitHub automatically
+Keep catalog generation separate from normal app deployment. The catalog workflow
+uploads a seven-day immutable snapshot artifact after validating its manifest,
+sizes, SHA-256 hashes, compressed payloads, record counts, and synopsis shards. A
+normal app push downloads the latest successful catalog artifact, repeats that
+validation, and builds Pages without contacting TMDB. If a catalog format change is
+incompatible with the retained artifact, the app deployment must fail safely until
+the catalog workflow is run manually with the new format.
+
+Also expose the catalog updater through `workflow_dispatch`. GitHub automatically
 disables scheduled workflows in public repositories after 60 days without
 repository activity. The app should treat this as expected zero-cost maintenance:
 show a stale-catalog warning and link the owner to the manual workflow instructions.
@@ -500,7 +507,7 @@ artifact sizes, validation coverage, and remaining Phase 3 deployment boundary.
   retention, core-catalog compaction, synopsis sharding, and validation.
 - Keep response-level restartability; a progressive multi-run bootstrap is not
   needed because the measured cold crawl completes comfortably inside one job.
-- Add the weekly rebuild and raw-response caching/checkpointing.
+- Add the nightly rebuild and same-run raw-response caching/checkpointing.
 - Produce coverage and freshness summaries in Action job output and the manifest.
 
 The complete cached US+NL rebuild produced 171,436 titles, an 8.43 MB compressed
@@ -517,6 +524,8 @@ Status: completed on 2026-09-01. See [PHASE-3.md](PHASE-3.md) for the first depl
 snapshot measurements, live smoke-test results, and refresh/recovery instructions.
 
 - Build and deploy with the official Pages Actions flow.
+- Keep fast app deployments separate from nightly/manual catalog generation, using
+  a validated short-retention workflow artifact as their handoff.
 - Store the TMDB credential in Actions secrets.
 - Add PWA caching, update notification, Credits/About, and error recovery.
 - Verify explicit catalog/shard decompression and TMDB image CDN behavior on the

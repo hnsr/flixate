@@ -1,11 +1,14 @@
-name: Refresh Flixate catalog
+name: Deploy Flixate app
 
 on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
   workflow_dispatch:
-  schedule:
-    - cron: "23 4 * * *"
 
 permissions:
+  actions: read
   contents: read
   pages: write
   id-token: write
@@ -17,9 +20,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
-    env:
-      TMDB_API_TOKEN: ${{ secrets.TMDB_API_TOKEN }}
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
@@ -27,20 +28,32 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - uses: actions/cache/restore@v4
-        id: tmdb-cache
+      - name: Find the latest successful catalog refresh
+        id: catalog-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id="$(gh api --method GET \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/catalog.yml/runs" \
+            -f branch=main \
+            -f status=success \
+            -f per_page=1 \
+            --jq '.workflow_runs[0].id')"
+          if [[ -z "$run_id" || "$run_id" == "null" ]]; then
+            echo "No successful catalog refresh is available." >&2
+            exit 1
+          fi
+          echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
+      - name: Download the latest catalog snapshot
+        uses: actions/download-artifact@v5
         with:
-          path: .cache/phase0
-          key: tmdb-discovery-${{ github.run_id }}
-      - name: Build and validate US+NL snapshot
-        run: npm run catalog -- --resume-cache
-      - name: Verify the published snapshot files
+          name: flixate-catalog-${{ steps.catalog-run.outputs.run-id }}
+          path: public/data/live
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.catalog-run.outputs.run-id }}
+      - name: Validate the downloaded catalog snapshot
         run: npm run catalog:validate
-      - uses: actions/cache/save@v4
-        if: always() && steps.tmdb-cache.outputs.cache-hit != 'true'
-        with:
-          path: .cache/phase0
-          key: tmdb-discovery-${{ github.run_id }}
       - run: npm test
       - run: npm run typecheck
       - name: Configure GitHub Pages
@@ -50,12 +63,6 @@ jobs:
           VITE_CATALOG_MANIFEST_URL: data/live/manifest.json
           VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
         run: npm run build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: flixate-catalog-${{ github.run_id }}
-          path: public/data/live/
-          if-no-files-found: error
-          retention-days: 7
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:

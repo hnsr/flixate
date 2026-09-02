@@ -62,10 +62,11 @@ saturated discovery partitions. The browser independently validates manifest
 counts, artifact hashes, core schema and title count, every title record, duplicate
 keys, and synopsis records.
 
-The weekly/manual GitHub Actions workflow builds and validates the catalog, writes a
-coverage/size summary, saves its same-run TMDB response cache for restartable job
+The nightly/manual GitHub Actions workflow builds and validates the catalog, writes
+a coverage/size summary, saves its same-run TMDB response cache for restartable job
 reruns, builds the production app against the result, and uploads the catalog as a
-14-day workflow artifact. Failed builds cannot publish or replace a snapshot.
+seven-day workflow artifact. Normal app pushes use that artifact without rerunning
+discovery. Failed builds cannot publish or replace a snapshot.
 The measured cold crawl is roughly 12 minutes, so the planned progressive multi-run
 bootstrap is unnecessary; response-level caching still makes interrupted reruns
 safe and economical.

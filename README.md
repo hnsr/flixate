@@ -40,9 +40,16 @@ npm run build
 
 ## Deploy
 
-GitHub Pages deployment is live. A successful push to `main`, the weekly schedule,
-or a manual workflow run rebuilds the catalog and publishes the complete app. See
-[the Phase 3 deployment report](PHASE-3.md) for setup and recovery instructions.
+GitHub Pages deployment is live through two workflows:
+
+- a push to `main` downloads and validates the latest catalog artifact, then builds
+  and deploys only the app;
+- a nightly or manually requested catalog refresh crawls TMDB, validates and retains
+  a new seven-day catalog artifact, then deploys it with the current app.
+
+Run `npm run catalog:validate` to verify a downloaded or locally generated live
+snapshot. See [the Phase 3 deployment report](PHASE-3.md) for setup, format-change,
+and recovery instructions.
 
 ## Project documents
 

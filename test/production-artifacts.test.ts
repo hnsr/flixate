@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
 import { writeProductionSnapshot } from "../src/catalog/production-artifacts.js";
 import type { CatalogManifest, DiscoveredTitle } from "../src/catalog/types.js";
+import { validateCatalogSnapshot } from "../src/catalog/validate-snapshot.js";
 import { parseCatalogManifest } from "../src/data/manifest.js";
 
 const temporaryDirectories: string[] = [];
@@ -70,6 +71,7 @@ describe("production catalog artifacts", () => {
       JSON.parse(await readFile(path.join(outputDir, "manifest.json"), "utf8")),
     );
     expect(savedManifest).toEqual(manifest);
+    await expect(validateCatalogSnapshot(outputDir)).resolves.toEqual(manifest);
     expect(manifest.counts).toMatchObject({
       titles: 2,
       movies: 1,
@@ -94,6 +96,12 @@ describe("production catalog artifacts", () => {
     ) as { synopses: Record<string, string> };
     expect(shard.synopses).toEqual({ "movie:1": "A concise overview." });
     expect(movieShard.entries).toBe(1);
+
+    await writeFile(
+      path.join(outputDir, manifest.catalog.file),
+      Buffer.concat([coreBytes, Buffer.from([0])]),
+    );
+    await expect(validateCatalogSnapshot(outputDir)).rejects.toThrow("wrong compressed size");
   });
 
   it("refuses to publish a newly introduced TMDB genre without an explicit mapping", async () => {

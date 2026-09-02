@@ -26,27 +26,37 @@ and generated live catalog remain ignored by Git.
 
 ## Deployment and refresh behavior
 
-The `Deploy Flixate` workflow runs:
+Since 2026-09-02, deployment is split into two workflows:
 
-- after a push to `main`;
-- every Monday at 04:23 UTC; and
-- on demand from **Actions → Deploy Flixate → Run workflow**.
+- **Deploy Flixate app** runs after a non-documentation push to `main` or on manual
+  request. It downloads the catalog artifact from the latest successful refresh,
+  validates every declared file, runs tests and type checking, and deploys the PWA.
+  It does not contact TMDB or regenerate the catalog.
+- **Refresh Flixate catalog** runs nightly at 04:23 UTC or on manual request. It
+  rebuilds the US+NL catalog, validates it, retains the snapshot as a seven-day
+  artifact, runs the app checks, and deploys the fresh catalog with the current app.
 
-It installs from the lockfile, builds and validates a fresh US+NL catalog, runs the
-unit suite and type checker, builds the app with the `/flixate/` Pages base, and
-uploads one immutable Pages artifact. The deploy job depends on the entire build,
-so a failed crawl, validation, test, or app build does not replace the currently
-published site.
+The app workflow receives `actions:read` only so the official artifact downloader
+can read a specific prior run. It finds the latest successful `catalog.yml` run and
+requests the matching immutable `flixate-catalog-{run_id}` artifact. The validator
+checks the manifest schema, file paths, compressed and uncompressed sizes, SHA-256
+digests, core record counts, and every synopsis shard before Pages is built. GitHub
+documents that cross-run artifact downloads require a run ID and a token with
+Actions read permission.
 
-The repository-site URL is <https://hnsr.github.io/flixate/>. A separate 14-day
-catalog artifact is retained on the workflow run for inspection. Markdown-only
-pushes are ignored so documentation edits do not trigger an unnecessary full
-catalog crawl.
+The repository-site URL is <https://hnsr.github.io/flixate/>. Markdown-only pushes
+remain ignored. If a code change introduces an incompatible catalog format, the
+fast deployment fails without replacing the live site; manually run **Refresh
+Flixate catalog** to generate and deploy the new format. The same recovery applies
+if nightly refreshes have been disabled long enough for every seven-day catalog
+artifact to expire.
 
 GitHub can automatically disable scheduled workflows in a public repository after
 60 days without repository activity. If the catalog date stops advancing, open the
-repository's **Actions** tab, enable `Deploy Flixate` if necessary, and run it once
-manually. Normal pushes and manual runs are unaffected by the weekly cadence.
+repository's **Actions** tab, enable **Refresh Flixate catalog** if necessary, and
+run it once manually. Normal app pushes remain independent from that schedule.
+
+Reference: [Downloading workflow artifacts](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts)
 
 ## PWA behavior
 

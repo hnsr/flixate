@@ -11,6 +11,7 @@
     "phase0:sample": "npm run phase0 -- --sample",
     "catalog": "node --env-file-if-exists=.env --import tsx scripts/catalog.ts",
     "catalog:sample": "npm run catalog -- --sample --output-dir artifacts/catalog-sample",
+    "catalog:validate": "node --import tsx scripts/validate-catalog.ts",
     "benchmark:browser": "node --import tsx scripts/browser-benchmark.ts",
     "test": "vitest run",
     "test:watch": "vitest",
