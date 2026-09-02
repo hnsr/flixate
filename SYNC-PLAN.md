@@ -1,6 +1,8 @@
 # Cross-device sync plan
 
-Status: proposed on 2026-09-01; not yet implemented
+Status: S0 localhost round trip and optimized reconnect UX passed on 2026-09-02;
+GitHub Pages and Android checks remain. See [SYNC-SPIKE.md](SYNC-SPIKE.md) for the
+isolated probe and evidence matrix.
 
 ## Decision
 
@@ -29,7 +31,7 @@ References:
 - Carry seen/unseen state across a person's browsers and devices.
 - Use the same mechanism for watchlists when that feature is added.
 - Preserve instant local writes and full offline use.
-- Require no Flixate server, database, per-user secret, or paid account.
+- Require no Flixate server, database, long-lived per-user credential, or paid account.
 - Make sync optional and keep JSON export/import as a permanent escape hatch.
 - Merge concurrent and offline edits without silently losing a newer decision.
 - Keep one person's state isolated from every other Google account.
@@ -53,7 +55,8 @@ product decision.
 Flixate remains usable immediately with no sign-in. An optional account area adds:
 
 - **Connect Google Drive** — opens Google's account/permission dialog.
-- **Sync now** — retries authorization if necessary, then performs a two-way merge.
+- **Sync now** — manually retries authorization or synchronization when necessary;
+  routine Drive-backed actions normally initiate reconnection themselves.
 - **Disconnect** — forgets the local account binding and token without deleting
   local or remote history.
 - a compact state such as `Local only`, `Syncing…`, `Synced just now`, `Offline`,
@@ -67,9 +70,11 @@ one of two explicit actions:
 2. **Use account state on this browser** — replaces local personal state only after
    confirmation and offers a JSON export first.
 
-Normal seen/watchlist actions always update local storage synchronously. If an
-authorized Drive session is available, Flixate schedules a debounced sync. A Drive
-failure never blocks browsing or changes the local result of the user's action.
+Normal seen/watchlist actions always update local storage synchronously. If the
+saved token is still valid, Flixate schedules a debounced sync. If it has expired,
+the same user gesture initiates a fresh token request using the remembered account
+hint, then synchronizes. A Drive failure never blocks browsing or changes the local
+result of the user's action; the mutation remains queued locally.
 
 ## OAuth and account identity
 
@@ -80,20 +85,25 @@ https://www.googleapis.com/auth/drive.appdata
 ```
 
 The OAuth client ID is public configuration and may be present in the built app.
-There is no client secret. Access tokens stay in memory and must never enter
-`localStorage`, IndexedDB, backups, logs, URLs, or the service-worker cache.
+There is no client secret. To avoid reauthorization after an ordinary reload,
+Flixate may store the short-lived access token, granted scope, and exact expiry in
+local browser storage. It must purge expired tokens with a safety margin and remove
+them on disconnect, account mismatch, or an authorization failure. Tokens must
+never enter backups, logs, URLs, Git, build artifacts, or the service-worker cache.
 
-Google's browser tokens are short-lived and cannot be silently refreshed by a
-backend because Flixate has none. After expiry, Google requires another token
-request initiated by a user action. The feasibility spike must measure whether
-this becomes a quick account popup or repeated consent in each target environment.
-Flixate must describe the state as disconnected/reconnect-required rather than
-pretending that sync is continuously active.
+Google's browser tokens are short-lived and Flixate has no backend refresh token.
+After expiry, Google requires another token request initiated by a user action.
+Flixate uses the next seen/watchlist/sync action to request one with an empty prompt
+and the remembered email as `login_hint`. With a valid Google session and grant,
+this should avoid manual account selection; the feasibility spike measures the
+actual popup behavior in each target environment. A visible reconnect state remains
+the fallback when Google requires attention.
 
 After authorization, call Drive `about.get` with the minimal user fields. Store the
-opaque Drive `permissionId` as the local account binding and show the display name
-or email when available. This allows Flixate to detect account switching before it
-merges local data. The `about.get` endpoint accepts the `drive.appdata` scope.
+opaque Drive `permissionId` as the local account binding, retain the email locally
+as a future `login_hint`, and show the display name or email when available. This
+allows Flixate to detect account switching before it merges local data. The
+`about.get` endpoint accepts the `drive.appdata` scope.
 
 Reference: [Drive `about.get`](https://developers.google.com/workspace/drive/api/reference/rest/v3/about/get)
 
@@ -174,7 +184,9 @@ loss, promote the stamp to a small hybrid logical clock before rollout.
 ## Failure and recovery behavior
 
 - Offline or Google unavailable: keep local changes and show `Waiting to sync`.
-- Token expired or revoked: retain data and require **Reconnect to sync**.
+- Token expired: retain data and initiate optimized reauthorization from the next
+  Drive-relevant user action; show **Reconnect to sync** only if that attempt needs
+  attention or the grant was revoked.
 - Rate limit or transient server error: use bounded exponential backoff with jitter.
 - Malformed remote file: ignore it, show a non-destructive warning, and leave it
   available for diagnosis.
@@ -193,7 +205,10 @@ uninstalls the app from Drive, so Drive sync is not the sole backup mechanism.
 ## Security and privacy rules
 
 - Request only `drive.appdata`; do not request broad Drive access.
-- Never persist or log OAuth access tokens.
+- Persist only the current short-lived access token with its exact expiry; eagerly
+  purge it when expired or invalid, and never persist a refresh token.
+- Never export, sync, log, cache through the service worker, or put OAuth tokens in
+  URLs or build artifacts.
 - Restrict the OAuth client's production JavaScript origin to
   `https://hnsr.github.io`; add explicit localhost origins only for development.
 - Load Google Identity Services only when sync is offered, and keep a strict content
@@ -230,7 +245,8 @@ Reference: [Google OAuth personal-use policy](https://developers.google.com/iden
 
 - Add an isolated development adapter behind a feature flag.
 - Configure a Google Cloud test project and browser OAuth client.
-- Obtain an in-memory token from desktop Chrome, Android Chrome, and installed PWA.
+- Obtain and safely restore a short-lived token in desktop Chrome, Android Chrome,
+  and the installed PWA.
 - Verify `about.get`, list/create/download/update in `appDataFolder`, REST+CORS, and
   account switching using only `drive.appdata`.
 - Measure first consent, later-session reconnection, expiry/revocation recovery, and
@@ -238,7 +254,7 @@ Reference: [Google OAuth personal-use policy](https://developers.google.com/iden
 - Record request counts, latency, actual warnings, and required Cloud setup.
 
 Exit gate: all target environments can round-trip a small state document without a
-backend, broad Drive scope, persisted token, or unacceptable recurring consent.
+backend, broad Drive scope, long-lived credential, or unacceptable recurring consent.
 
 ### S1 — state schema and deterministic merge
 
@@ -255,8 +271,8 @@ tested offline/concurrent sequence loses the newest user decision.
 ### S2 — production Drive adapter
 
 - Implement list, download, create, and update through Drive REST/CORS.
-- Keep tokens in memory, debounce writes, coalesce concurrent sync requests, and use
-  bounded retry/backoff.
+- Reuse an unexpired locally saved token, purge it predictably, debounce writes,
+  coalesce concurrent authorization/sync requests, and use bounded retry/backoff.
 - Separate Drive transport, schema validation, merge logic, and UI state.
 - Add mock-transport integration tests without requiring Google credentials in CI.
 
@@ -266,8 +282,9 @@ the adapter cannot write another device's document.
 ### S3 — account and sync UX
 
 - Add connect, first-merge confirmation, sync status, manual retry, and disconnect.
-- Make pending local changes and reconnect-required states understandable without
-  modal interruptions.
+- Initiate optimized reauthorization from the next Drive-relevant user action and
+  reserve reconnect-required UI for cases that genuinely need attention.
+- Make pending local changes understandable without blocking local actions.
 - Ensure keyboard, screen-reader, narrow-screen, and installed-PWA behavior.
 - Keep export/import prominent as recovery.
 
@@ -280,13 +297,14 @@ replacement cannot silently disclose or erase the existing browser's state.
 - Test two desktop profiles, Android Chrome, an installed PWA, offline edits, token
   expiry/revocation, and a real multi-device merge on GitHub Pages.
 - Verify that the client ID is public but no token, account data, or personal state
-  enters Git, Actions logs, Pages assets, URLs, or service-worker caches.
+  enters Git, Actions logs, Pages assets, URLs, or service-worker caches; the one
+  intentional token location is local browser storage on the connected device.
 - Document setup, normal use, limitations, disconnect, recovery, and remote deletion.
 - Roll out as optional; retain local-only mode permanently.
 
-Exit gate: seen changes converge across supported devices after an explicit sync,
-offline/local-only use remains reliable, and no server or database maintenance is
-introduced.
+Exit gate: seen changes converge across supported devices after a Drive-relevant
+interaction or explicit sync, offline/local-only use remains reliable, and no server
+or database maintenance is introduced.
 
 ## Acceptance criteria
 
@@ -302,7 +320,8 @@ introduced.
 - Switching Google accounts requires explicit confirmation before personal data is
   merged or replaced.
 - Expired/revoked authorization degrades to local-only use without data loss.
-- No OAuth access token is persisted or exposed in application artifacts or logs.
+- A short-lived OAuth token may exist only in local browser storage until its exact
+  expiry; no token is exposed in application artifacts, exports, URLs, or logs.
 - JSON backup export/import remains compatible with synchronized state.
 - The implementation stays comfortably within the no-cost Drive API threshold for
   the intended handful of users.

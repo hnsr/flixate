@@ -21,12 +21,16 @@ import {
 import { useCatalog } from "../hooks/use-catalog.js";
 import { usePersistentState } from "../hooks/use-persistent-state.js";
 import { CatalogList } from "./CatalogList.js";
+import { DriveOAuthSpike } from "./DriveOAuthSpike.js";
 import { FiltersPanel } from "./FiltersPanel.js";
 import { ImportDialog } from "./ImportDialog.js";
 import { SearchBar } from "./SearchBar.js";
 
 const SETTINGS_KEY = "flixate:filters:v1";
 const REFRESH_WORKFLOW_URL = "https://github.com/hnsr/flixate/actions/workflows/catalog.yml";
+const GOOGLE_CLIENT_ID = import.meta.env.MODE === "test"
+  ? undefined
+  : import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 type PendingImport = {
   backup: FlixateBackup;
@@ -249,6 +253,8 @@ export function App(): React.JSX.Element {
           </section>
         </div>
       </main>
+
+      {GOOGLE_CLIENT_ID && <DriveOAuthSpike clientId={GOOGLE_CLIENT_ID} />}
 
       <footer id="credits">
         <div>

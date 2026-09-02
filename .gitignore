@@ -1,6 +1,7 @@
 # Local credentials
 .env
 .env.*
+.env~
 !.env.example
 
 # Dependencies and generated output
