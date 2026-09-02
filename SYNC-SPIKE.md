@@ -46,6 +46,26 @@ https://www.googleapis.com/auth/drive.appdata
 
 No client secret, API key, billing credential, or redirect URI belongs in Flixate.
 
+## Deployed probe flag
+
+The production build receives the public client ID through the
+`VITE_GOOGLE_CLIENT_ID` GitHub repository variable, not a secret. The normal Pages
+app keeps the development probe hidden. Enable it for the current browser profile
+with:
+
+```text
+https://hnsr.github.io/flixate/?drive-spike=1
+```
+
+The flag persists in local storage so an installed PWA on the same profile can be
+launched and tested. Disable and forget the probe flag afterward with:
+
+```text
+https://hnsr.github.io/flixate/?drive-spike=0
+```
+
+Neither URL contains an OAuth token or personal state.
+
 ## Local interactive test
 
 1. Start Flixate with `npm run dev` and open the exact URL printed by Vite. If Vite

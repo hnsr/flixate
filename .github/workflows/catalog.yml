@@ -50,6 +50,7 @@ jobs:
       - name: Build the production app against the snapshot
         env:
           VITE_CATALOG_MANIFEST_URL: data/live/manifest.json
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
         run: npm run build
       - uses: actions/upload-artifact@v4
         with:

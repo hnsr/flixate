@@ -20,6 +20,7 @@ import {
 } from "../domain/user-state.js";
 import { useCatalog } from "../hooks/use-catalog.js";
 import { usePersistentState } from "../hooks/use-persistent-state.js";
+import { driveSpikeEnabled } from "../sync/drive-spike-flag.js";
 import { CatalogList } from "./CatalogList.js";
 import { DriveOAuthSpike } from "./DriveOAuthSpike.js";
 import { FiltersPanel } from "./FiltersPanel.js";
@@ -31,6 +32,12 @@ const REFRESH_WORKFLOW_URL = "https://github.com/hnsr/flixate/actions/workflows/
 const GOOGLE_CLIENT_ID = import.meta.env.MODE === "test"
   ? undefined
   : import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const DRIVE_SPIKE_ENABLED = driveSpikeEnabled(
+  GOOGLE_CLIENT_ID,
+  import.meta.env.DEV,
+  location.search,
+  localStorage,
+);
 
 type PendingImport = {
   backup: FlixateBackup;
@@ -254,7 +261,7 @@ export function App(): React.JSX.Element {
         </div>
       </main>
 
-      {GOOGLE_CLIENT_ID && <DriveOAuthSpike clientId={GOOGLE_CLIENT_ID} />}
+      {DRIVE_SPIKE_ENABLED && GOOGLE_CLIENT_ID && <DriveOAuthSpike clientId={GOOGLE_CLIENT_ID} />}
 
       <footer id="credits">
         <div>

@@ -6,6 +6,10 @@ import {
   saveDriveSpikeSession,
 } from "../src/sync/drive-spike-session.js";
 import {
+  DRIVE_SPIKE_FLAG_KEY,
+  driveSpikeEnabled,
+} from "../src/sync/drive-spike-flag.js";
+import {
   DRIVE_APPDATA_SCOPE,
   requestDriveAccess,
   type GoogleOAuth2,
@@ -19,6 +23,23 @@ function jsonResponse(value: unknown, status = 200): Response {
 }
 
 describe("Google Drive feasibility probe", () => {
+  it("keeps the production probe hidden unless its sticky query flag is enabled", () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value); },
+      removeItem: (key: string) => { values.delete(key); },
+    };
+
+    expect(driveSpikeEnabled("client-id", false, "", storage)).toBe(false);
+    expect(driveSpikeEnabled("client-id", false, "?drive-spike=1", storage)).toBe(true);
+    expect(values.get(DRIVE_SPIKE_FLAG_KEY)).toBe("1");
+    expect(driveSpikeEnabled("client-id", false, "", storage)).toBe(true);
+    expect(driveSpikeEnabled("client-id", false, "?drive-spike=0", storage)).toBe(false);
+    expect(values.has(DRIVE_SPIKE_FLAG_KEY)).toBe(false);
+    expect(driveSpikeEnabled(undefined, false, "?drive-spike=1", storage)).toBe(false);
+  });
+
   it("requests only private app-data access and keeps the returned token in its result", async () => {
     let requestedScope = "";
     let requestedClientId = "";
