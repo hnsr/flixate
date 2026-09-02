@@ -63,3 +63,4 @@ and recovery instructions.
 - [Google Drive OAuth feasibility spike](SYNC-SPIKE.md)
 - [Sync S1 implementation report](SYNC-S1.md)
 - [Sync S2 implementation report](SYNC-S2.md)
+- [Sync S3 implementation and rollout report](SYNC-S3.md)

@@ -384,6 +384,30 @@ describe("Drive sync engine", () => {
     expect(store.state.titles["tv:2"]?.seen?.value).toBe(true);
     expect(written[0]?.state.titles["tv:2"]?.seen?.value).toBe(true);
   });
+
+  it("can explicitly replace local state from Drive without merging local-only titles", async () => {
+    const local = applyBooleanChange(emptySyncState(), DEVICE_A, "movie:1", "seen", true, NOW);
+    const remote = applyBooleanChange(emptySyncState(), DEVICE_B, "tv:2", "seen", true, NOW);
+    const remoteFile = file(DEVICE_B);
+    const writes: SyncEnvelopeV1[] = [];
+    const transport: DriveStateTransport = {
+      getAccount: async () => ({ permissionId: "account-a", emailAddress: null, displayName: null }),
+      listStateFiles: async () => [remoteFile],
+      downloadStateFile: async () => JSON.stringify(envelope(DEVICE_B, remote)),
+      writeOwnedStateFile: async (_deviceId, _existing, value) => {
+        writes.push(value);
+        return file(DEVICE_A);
+      },
+    };
+    const store = new MemorySyncStore(local, boundMetadata());
+
+    await new DriveSyncEngine(transport, store, () => NOW)
+      .synchronize({ localState: "remote" });
+
+    expect(store.state.titles["movie:1"]).toBeUndefined();
+    expect(store.state.titles["tv:2"]?.seen?.value).toBe(true);
+    expect(writes[0]?.state).toEqual(store.state);
+  });
 });
 
 describe("sync request coordination", () => {

@@ -42,6 +42,7 @@ describe("Flixate app", () => {
     await user.click(screen.getByRole("button", { name: "Mark Arrival as seen" }));
     await waitFor(() => expect(screen.queryByText("Arrival")).not.toBeInTheDocument());
     expect(localStorage.getItem("flixate:user-state:v1")).toContain('"seen":true');
+    expect(localStorage.getItem("flixate:sync-state:v1")).toContain('"seen":{"value":true');
   });
 
   it("updates the search input immediately and applies the catalog query after a debounce", async () => {

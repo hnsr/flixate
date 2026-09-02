@@ -10,6 +10,7 @@ import type { DriveAccessRequest } from "./google-identity.js";
 import type { SyncAccountIdentity } from "./sync-metadata.js";
 import {
   DriveSyncEngine,
+  type DriveSyncOptions,
   type DriveSyncResult,
   type SyncStateStore,
 } from "./sync-engine.js";
@@ -21,7 +22,7 @@ export class DriveAuthorizationRequiredError extends Error {
   }
 }
 
-export type DriveSyncServiceOptions = {
+export type DriveSyncServiceOptions = DriveSyncOptions & {
   authorize?: boolean;
   accessRequest?: DriveAccessRequest;
 };
@@ -64,7 +65,7 @@ export class DriveSyncService {
         this.createTransport(grant.accessToken),
         this.store,
         this.now,
-      ).synchronize();
+      ).synchronize({ localState: options.localState });
     } catch (error) {
       if (error instanceof DriveRequestError && error.authorizationFailed) {
         this.authorization.invalidate(grant.accessToken);

@@ -11,33 +11,47 @@ import { availableGenres, DEFAULT_FILTERS, type FilterSettings, type TitleKey } 
 import { createCatalogFilterIndex, filterCatalogIndex } from "../domain/filters.js";
 import {
   loadUserState,
-  mergeUserStates,
   migrateUserState,
   seenTitleKeys,
-  toggleSeen,
   USER_STATE_KEY,
   type UserStateV1,
 } from "../domain/user-state.js";
 import { useCatalog } from "../hooks/use-catalog.js";
+import { useDriveSync } from "../hooks/use-drive-sync.js";
 import { usePersistentState } from "../hooks/use-persistent-state.js";
-import { driveSpikeEnabled } from "../sync/drive-spike-flag.js";
+import type { SyncStateStore } from "../sync/sync-engine.js";
+import {
+  loadOrCreateSyncMetadata,
+  parseSyncMetadata,
+  saveSyncMetadata,
+  SYNC_METADATA_KEY,
+  type SyncMetadataV1,
+} from "../sync/sync-metadata.js";
+import {
+  LOCAL_SYNC_STATE_KEY,
+  loadOrMigrateLocalSyncState,
+  parseLocalSyncState,
+  saveLocalSyncState,
+  syncStatesEqual,
+} from "../sync/sync-local-state.js";
+import {
+  applyBooleanChange,
+  mergeSyncStates,
+  migrateUserStateToSync,
+  syncStateToUserState,
+  type SyncStateV1,
+} from "../sync/sync-state.js";
 import { CatalogList } from "./CatalogList.js";
-import { DriveOAuthSpike } from "./DriveOAuthSpike.js";
 import { FiltersPanel } from "./FiltersPanel.js";
 import { ImportDialog } from "./ImportDialog.js";
 import { SearchBar } from "./SearchBar.js";
+import { SyncControls } from "./SyncControls.js";
 
 const SETTINGS_KEY = "flixate:filters:v1";
 const REFRESH_WORKFLOW_URL = "https://github.com/hnsr/flixate/actions/workflows/catalog.yml";
 const GOOGLE_CLIENT_ID = import.meta.env.MODE === "test"
   ? undefined
   : import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const DRIVE_SPIKE_ENABLED = driveSpikeEnabled(
-  GOOGLE_CLIENT_ID,
-  import.meta.env.DEV,
-  location.search,
-  localStorage,
-);
 
 type PendingImport = {
   backup: FlixateBackup;
@@ -68,27 +82,104 @@ function LoadingState(): React.JSX.Element {
 export function App(): React.JSX.Element {
   const catalogState = useCatalog();
   const importInput = useRef<HTMLInputElement>(null);
+  const initialPersonalState = useRef<{
+    metadata: SyncMetadataV1;
+    state: SyncStateV1;
+  } | null>(null);
+  if (!initialPersonalState.current) {
+    const metadata = loadOrCreateSyncMetadata(localStorage);
+    initialPersonalState.current = {
+      metadata,
+      state: loadOrMigrateLocalSyncState(
+        localStorage,
+        metadata.deviceId,
+        loadUserState(localStorage),
+      ),
+    };
+  }
   const [filters, setFilters] = usePersistentState(SETTINGS_KEY, DEFAULT_FILTERS, normalizeFilterSettings);
   const searchDraft = useRef(filters.query);
-  const [userState, setUserState] = useState(() => loadUserState(localStorage));
+  const [syncMetadata, setSyncMetadata] = useState(initialPersonalState.current.metadata);
+  const [syncState, setSyncState] = useState(initialPersonalState.current.state);
+  const syncMetadataRef = useRef(syncMetadata);
+  const syncStateRef = useRef(syncState);
+  syncMetadataRef.current = syncMetadata;
+  syncStateRef.current = syncState;
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [syncPanelOpen, setSyncPanelOpen] = useState(false);
 
-  useEffect(() => {
+  const commitSyncState = useCallback((next: SyncStateV1) => {
+    syncStateRef.current = next;
     try {
-      localStorage.setItem(USER_STATE_KEY, JSON.stringify(userState));
+      saveLocalSyncState(localStorage, syncMetadataRef.current.deviceId, next);
+      localStorage.setItem(USER_STATE_KEY, JSON.stringify(syncStateToUserState(next)));
     } catch {
       // The in-memory session remains usable when browser storage is unavailable.
     }
-  }, [userState]);
+    setSyncState((current) => syncStatesEqual(current, next) ? current : next);
+  }, []);
+
+  const syncStore = useMemo<SyncStateStore>(() => ({
+    loadState: () => syncStateRef.current,
+    saveState: (next) => { commitSyncState(next); },
+    loadMetadata: () => syncMetadataRef.current,
+    saveMetadata: (next) => {
+      syncMetadataRef.current = next;
+      try {
+        saveSyncMetadata(localStorage, next);
+      } catch {
+        // Retain the confirmed binding in memory if storage is unavailable.
+      }
+      setSyncMetadata(next);
+    },
+  }), [commitSyncState]);
+  const driveSync = useDriveSync({
+    clientId: GOOGLE_CLIENT_ID,
+    store: syncStore,
+    metadata: syncMetadata,
+  });
+  const userState = useMemo(() => syncStateToUserState(syncState), [syncState]);
+
+  useEffect(() => {
+    commitSyncState(syncStateRef.current);
+  }, [commitSyncState]);
 
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
-      if (event.key !== USER_STATE_KEY || !event.newValue) return;
-      try {
-        setUserState(migrateUserState(JSON.parse(event.newValue)));
-      } catch {
-        // Ignore a malformed cross-tab update and retain the current valid state.
+      if (!event.newValue) return;
+      if (event.key === LOCAL_SYNC_STATE_KEY) {
+        try {
+          const incoming = parseLocalSyncState(event.newValue, syncMetadataRef.current.deviceId);
+          const merged = mergeSyncStates(syncStateRef.current, incoming);
+          if (!syncStatesEqual(syncStateRef.current, merged)) commitSyncState(merged);
+        } catch {
+          // Ignore malformed cross-tab state and retain the current valid state.
+        }
+      }
+      if (event.key === USER_STATE_KEY) {
+        try {
+          const legacy = migrateUserState(JSON.parse(event.newValue));
+          const incoming = migrateUserStateToSync(
+            legacy,
+            syncMetadataRef.current.deviceId,
+          );
+          const merged = mergeSyncStates(syncStateRef.current, incoming);
+          if (!syncStatesEqual(syncStateRef.current, merged)) commitSyncState(merged);
+        } catch {
+          // Support an older Flixate tab during rollout without trusting bad state.
+        }
+      }
+      if (event.key === SYNC_METADATA_KEY) {
+        try {
+          const incoming = parseSyncMetadata(JSON.parse(event.newValue));
+          if (incoming.deviceId === syncMetadataRef.current.deviceId) {
+            syncMetadataRef.current = incoming;
+            setSyncMetadata(incoming);
+          }
+        } catch {
+          // Ignore malformed cross-tab metadata.
+        }
       }
     };
     window.addEventListener("storage", onStorage);
@@ -127,15 +218,31 @@ export function App(): React.JSX.Element {
 
   const applyImport = () => {
     if (!pendingImport) return;
-    setUserState((current) => mergeUserStates(current, pendingImport.backup.state));
+    const imported = migrateUserStateToSync(
+      pendingImport.backup.state,
+      syncMetadataRef.current.deviceId,
+    );
+    commitSyncState(mergeSyncStates(syncStateRef.current, imported));
     setFilters(pendingImport.backup.settings);
     setPendingImport(null);
     setNotice("Backup merged. Your newer local changes were kept.");
+    driveSync.afterLocalChange();
   };
 
   const toggleTitle = useCallback(
-    (key: TitleKey) => setUserState((current) => toggleSeen(current, key)),
-    [],
+    (key: TitleKey) => {
+      const current = syncStateRef.current;
+      const next = applyBooleanChange(
+        current,
+        syncMetadataRef.current.deviceId,
+        key,
+        "seen",
+        !(current.titles[key]?.seen?.value ?? false),
+      );
+      commitSyncState(next);
+      driveSync.afterLocalChange();
+    },
+    [commitSyncState, driveSync],
   );
   const updateQuery = useCallback(
     (query: string) => setFilters((current) => current.query === query
@@ -152,6 +259,9 @@ export function App(): React.JSX.Element {
       : { ...current, sort }),
     [setFilters],
   );
+  const exportCurrent = useCallback(() => {
+    downloadBackup(userState, { ...filters, query: searchDraft.current });
+  }, [filters, userState]);
 
   if (catalogState.status === "loading") return <LoadingState />;
   if (catalogState.status === "error") {
@@ -192,10 +302,17 @@ export function App(): React.JSX.Element {
           >
             {catalogState.catalog.fixture ? "Development fixture" : "US + NL catalog"}
           </span>
+          <SyncControls
+            metadata={syncMetadata}
+            controller={driveSync}
+            open={syncPanelOpen}
+            onOpenChange={setSyncPanelOpen}
+            onExport={exportCurrent}
+          />
           <button
             className="text-button"
             type="button"
-            onClick={() => downloadBackup(userState, { ...filters, query: searchDraft.current })}
+            onClick={exportCurrent}
           >Export</button>
           <button className="text-button" type="button" onClick={() => importInput.current?.click()}>Import</button>
           <input
@@ -261,12 +378,10 @@ export function App(): React.JSX.Element {
         </div>
       </main>
 
-      {DRIVE_SPIKE_ENABLED && GOOGLE_CLIENT_ID && <DriveOAuthSpike clientId={GOOGLE_CLIENT_ID} />}
-
       <footer id="credits">
         <div>
           <strong>Flixate</strong>
-          <p>A personal, local-first watch finder. Your seen history stays in this browser.</p>
+          <p>A personal, local-first watch finder. Optional sync stores seen history in your own private Google Drive app data.</p>
         </div>
         <div className="credits">
           <img className="tmdb-logo" src={`${import.meta.env.BASE_URL}tmdb.svg`} alt="The Movie Database (TMDB)" />

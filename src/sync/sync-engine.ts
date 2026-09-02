@@ -35,6 +35,10 @@ export type DriveSyncResult = {
   state: SyncStateV1;
 };
 
+export type DriveSyncOptions = {
+  localState?: "merge" | "remote";
+};
+
 export class SyncAccountNotBoundError extends Error {
   constructor() {
     super("This browser has not confirmed which Google Drive account it should synchronize with.");
@@ -62,7 +66,7 @@ export class DriveSyncEngine {
     private readonly now: () => string = () => new Date().toISOString(),
   ) {}
 
-  async synchronize(): Promise<DriveSyncResult> {
+  async synchronize(options: DriveSyncOptions = {}): Promise<DriveSyncResult> {
     const metadata = await this.store.loadMetadata();
     if (!metadata.account) throw new SyncAccountNotBoundError();
 
@@ -93,12 +97,19 @@ export class DriveSyncEngine {
       }
     }
 
-    // Re-read just before committing so local edits made during Drive downloads are
-    // included. The UI will also request a follow-up pass for edits during upload.
-    const initialLocal = await this.store.loadState();
     const mergedRemote = mergeSyncStates(...documents.map(({ envelope }) => envelope.state));
-    const latestLocal = await this.store.loadState();
-    const merged = mergeSyncStates(initialLocal, mergedRemote, latestLocal);
+    if (options.localState === "remote" && files.length > 0 && documents.length === 0) {
+      throw new Error("Drive contains Flixate state files, but none could be read safely.");
+    }
+
+    // Re-read just before committing so local edits made during Drive downloads are
+    // included. An explicit first-connect replacement is the sole exception.
+    let merged = mergedRemote;
+    if (options.localState !== "remote") {
+      const initialLocal = await this.store.loadState();
+      const latestLocal = await this.store.loadState();
+      merged = mergeSyncStates(initialLocal, mergedRemote, latestLocal);
+    }
     await this.store.saveState(merged);
 
     const ownedName = syncFileName(metadata.deviceId);

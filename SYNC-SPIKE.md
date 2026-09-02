@@ -139,8 +139,9 @@ the backend-free design and is the best supported Google browser-token behavior.
 | Installed Android PWA | Pass | Pass | Pass | Pass | Pass | Pass |
 
 The deployed checks were completed with the public client ID supplied as a GitHub
-repository variable. The normal app keeps the probe hidden; the query flag remains
-available temporarily as a diagnostic while the production sync adapter is built.
+repository variable. S3's production account controls now supersede the probe; its
+source remains only as historical diagnostic coverage and is no longer rendered by
+the app or enabled by the old query flag.
 
 ## Go/no-go gate
 
@@ -149,5 +150,5 @@ account identity was reliable, saved tokens survived reloads, and optimized
 reauthorization after simulated expiry needed no account choice or consent. The
 brief self-closing Google popup is accepted for the backend-free design.
 
-Proceed to S1's versioned per-device state envelope and deterministic merge. Remove
-the diagnostic probe when the production adapter and account UI supersede it.
+S1 through S3 subsequently implemented the versioned state, production adapter, and
+account UI. The diagnostic probe is no longer part of the rendered application.

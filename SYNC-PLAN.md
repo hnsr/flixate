@@ -1,9 +1,11 @@
 # Cross-device sync plan
 
 Status: S0 authorization feasibility, S1 deterministic state, and S2's production
-Drive adapter are complete. S3 account and sync UX is next. See
+Drive adapter are complete. S3 account and sync UX is implemented; deployed
+multi-device acceptance is pending. See
 [SYNC-SPIKE.md](SYNC-SPIKE.md), [SYNC-S1.md](SYNC-S1.md), and
-[SYNC-S2.md](SYNC-S2.md) for their implementation reports.
+[SYNC-S2.md](SYNC-S2.md) for the foundation reports and [SYNC-S3.md](SYNC-S3.md)
+for the current rollout checklist.
 
 ## Decision
 
@@ -303,6 +305,9 @@ Exit gate: local behavior is unchanged when sync is disabled or unavailable, and
 the adapter cannot write another device's document.
 
 ### S3 — account and sync UX
+
+Status: implemented on 2026-09-02; deployed first-connect and multi-device checks
+remain. See [SYNC-S3.md](SYNC-S3.md).
 
 - Add connect, first-merge confirmation, sync status, manual retry, and disconnect.
 - Initiate optimized reauthorization from the next Drive-relevant user action and
