@@ -550,8 +550,9 @@ gate and, if viable, its initial rollout.
 
 ### Phase 5 — cross-device sync (promoted; execute next)
 
-Status: planned on 2026-09-01. See [SYNC-PLAN.md](SYNC-PLAN.md) for the feasibility
-gate, Google Drive `appDataFolder` design, merge model, account safety, delivery
+Status: in progress. S0 authorization feasibility and S1's deterministic state
+layer are complete; S2 Drive-adapter work is next. See [SYNC-PLAN.md](SYNC-PLAN.md)
+for the Google Drive `appDataFolder` design, merge model, account safety, delivery
 steps, and acceptance criteria. This track is being taken before Phase 4 without
 renumbering the existing roadmap.
 
@@ -559,8 +560,9 @@ renumbering the existing roadmap.
   desktop Chrome, Android Chrome, and the installed PWA.
 - If the authorization UX passes, add optional per-account synchronization using
   one conflict-resistant state document per device.
-- Keep local state authoritative while offline, never persist OAuth access tokens,
-  and preserve JSON export/import permanently.
+- Keep local state authoritative while offline, persist only the current
+  short-lived OAuth access token with its exact expiry, and preserve JSON
+  export/import permanently.
 - Keep shared household state and any backend-based alternative out of the first
   sync release.
 

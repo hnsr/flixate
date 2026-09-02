@@ -1,7 +1,7 @@
 # Google Drive OAuth feasibility spike
 
-Status: localhost round trip and optimized reconnect passed on 2026-09-02;
-deployed-device checks pending
+Status: S0 passed on 2026-09-02 across localhost, GitHub Pages, Android Chrome,
+and the installed Android PWA
 
 ## Purpose
 
@@ -134,23 +134,20 @@ the backend-free design and is the best supported Google browser-token behavior.
 | Environment | Authorization | Account ID | List | Write | Read/validate | Reconnect UX |
 | --- | --- | --- | --- | --- | --- | --- |
 | Desktop Chrome, localhost | Pass | Pass | Pass | Pass (update) | Pass: no UI while valid; brief automatic popup after expiry |
-| Desktop Chrome, GitHub Pages | Pending | Pending | Pending | Pending | Pending | Pending |
-| Android Chrome, GitHub Pages | Pending | Pending | Pending | Pending | Pending | Pending |
-| Installed Android PWA | Pending | Pending | Pending | Pending | Pending | Pending |
+| Desktop Chrome, GitHub Pages | Pass | Pass | Pass | Pass | Pass | Pass |
+| Android Chrome, GitHub Pages | Pass | Pass | Pass | Pass | Pass | Pass |
+| Installed Android PWA | Pass | Pass | Pass | Pass | Pass | Pass |
 
-The localhost result decides whether to prepare a temporary production probe. The
-GitHub Pages/Android checks require the public client ID at build time; because a
-client ID is not secret, it can later be supplied as a repository variable or
-checked-in public configuration. That production change is not part of the local
-probe yet.
+The deployed checks were completed with the public client ID supplied as a GitHub
+repository variable. The normal app keeps the probe hidden; the query flag remains
+available temporarily as a diagnostic while the production sync adapter is built.
 
 ## Go/no-go gate
 
-S0 passes only if all target environments can round-trip the file using
-`drive.appdata`, the optimized recurring authorization interaction is acceptable,
-account identity is reliable, and neither a backend nor long-lived refresh
-credential is needed.
+S0 passed: every target environment round-tripped the file using `drive.appdata`,
+account identity was reliable, saved tokens survived reloads, and optimized
+reauthorization after simulated expiry needed no account choice or consent. The
+brief self-closing Google popup is accepted for the backend-free design.
 
-On success, remove the visible development probe and proceed to S1's versioned
-per-device state envelope and deterministic merge. On failure, remove the probe
-without changing the existing local state implementation.
+Proceed to S1's versioned per-device state envelope and deterministic merge. Remove
+the diagnostic probe when the production adapter and account UI supersede it.

@@ -1,8 +1,9 @@
 # Cross-device sync plan
 
-Status: S0 localhost round trip and optimized reconnect UX passed on 2026-09-02;
-GitHub Pages and Android checks remain. See [SYNC-SPIKE.md](SYNC-SPIKE.md) for the
-isolated probe and evidence matrix.
+Status: S0 completed on 2026-09-02 across localhost, GitHub Pages, Android Chrome,
+and the installed PWA. S1 state-schema and merge work is complete; S2's production
+Drive adapter is next. See [SYNC-SPIKE.md](SYNC-SPIKE.md) for the isolated probe and
+evidence matrix and [SYNC-S1.md](SYNC-S1.md) for the state-layer report.
 
 ## Decision
 
@@ -125,17 +126,33 @@ Watchlists should extend the per-title record rather than introduce an unrelated
 sync system. Each independently mutable field needs its own value and change stamp,
 so a recent watchlist edit cannot accidentally overwrite a newer seen edit.
 
-For example, the eventual logical shape may be:
+S1 uses this logical shape (shown with abbreviated device IDs):
 
 ```json
 {
-  "seen": { "value": true, "updatedAt": "2026-09-01T20:30:00.000Z" },
-  "watchlisted": { "value": false, "updatedAt": "2026-09-01T20:31:00.000Z" }
+  "seen": {
+    "value": true,
+    "changedAt": {
+      "wallTime": "2026-09-01T20:30:00.000Z",
+      "counter": 0,
+      "deviceId": "<device-a>"
+    }
+  },
+  "watchlisted": {
+    "value": false,
+    "changedAt": {
+      "wallTime": "2026-09-01T20:31:00.000Z",
+      "counter": 0,
+      "deviceId": "<device-b>"
+    }
+  }
 }
 ```
 
 False records are retained as tombstones. Removing them would allow an older `true`
-record from another offline device to reappear.
+record from another offline device to reappear. The hybrid change stamp adds a
+logical counter so a new decision remains newer even if a device clock moves
+backward or several decisions occur in the same millisecond.
 
 ## Remote layout
 
@@ -165,8 +182,8 @@ For every synchronization:
 1. List only Flixate state files in `appDataFolder`.
 2. Download, parse, migrate, and strictly validate each supported document.
 3. Merge local state and every valid remote state per title and per mutable field.
-4. Prefer the greater change timestamp; break equal timestamps deterministically by
-   device ID so merge order cannot affect the result.
+4. Prefer the greater hybrid change stamp in wall-time, counter, then device-ID
+   order so merge order cannot affect the result.
 5. Save the merged state locally before updating the current device's remote file.
 6. Upload only when that device document would materially change.
 7. Re-read or retry with exponential backoff after ambiguous network failures.
@@ -176,10 +193,10 @@ erase valid local state or other device documents. Unknown future fields are
 preserved when practical, and unsupported future schema versions are never
 downgraded in place.
 
-ISO timestamps are adequate only if device clocks are reasonably correct. The
-feasibility implementation must add deterministic equal-time handling, reject
-implausibly future timestamps, and test clock skew. If those tests expose realistic
-loss, promote the stamp to a small hybrid logical clock before rollout.
+S1 chose a small hybrid logical clock rather than relying on ISO timestamps alone.
+It advances the logical counter when local time moves backward or an accepted
+remote stamp is ahead, and rejects documents more than 24 hours in the future so a
+bad device clock cannot indefinitely dominate valid decisions.
 
 ## Failure and recovery behavior
 
@@ -243,6 +260,8 @@ Reference: [Google OAuth personal-use policy](https://developers.google.com/iden
 
 ### S0 — authorization and Drive feasibility spike
 
+Status: completed on 2026-09-02.
+
 - Add an isolated development adapter behind a feature flag.
 - Configure a Google Cloud test project and browser OAuth client.
 - Obtain and safely restore a short-lived token in desktop Chrome, Android Chrome,
@@ -257,6 +276,8 @@ Exit gate: all target environments can round-trip a small state document without
 backend, broad Drive scope, long-lived credential, or unacceptable recurring consent.
 
 ### S1 — state schema and deterministic merge
+
+Status: completed on 2026-09-02. See [SYNC-S1.md](SYNC-S1.md).
 
 - Introduce a versioned sync envelope, stable device ID, and account binding.
 - Extend merge semantics to deterministic timestamp ties and future watchlist fields.
@@ -326,17 +347,18 @@ or database maintenance is introduced.
 - The implementation stays comfortably within the no-cost Drive API threshold for
   the intended handful of users.
 
-## Open questions for S0
+## Remaining rollout decisions
 
-1. How often does the browser token flow visibly prompt on each target environment?
+1. The saved-token path shows no UI; reauthorization after simulated expiry showed
+   only a brief self-closing popup in the tested environments.
 2. Can the OAuth app be published for the known personal users without a recurring
    test-mode authorization expiry or confusing warning?
-3. Does `about.get` reliably return an opaque `permissionId` under only
-   `drive.appdata` for every target account type?
-4. Are ISO timestamps plus deterministic ties sufficient, or is a hybrid logical
-   clock justified by realistic clock-skew tests?
+3. `about.get` returned an opaque `permissionId` using only `drive.appdata` in all
+   tested environments.
+4. S1 adopted a hybrid logical clock and a 24-hour future-skew limit.
 5. Should connecting always perform an immediate sync, or first show local/remote
    counts before confirmation?
-6. Should filters ever sync, or remain intentionally device-local?
+6. Filters remain intentionally device-local under the first release's non-goals.
 
-These are spike decisions, not reasons to add a backend pre-emptively.
+Items 2 and 5 remain S3/S4 rollout decisions, not reasons to add a backend
+pre-emptively.

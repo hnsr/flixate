@@ -61,3 +61,4 @@ and recovery instructions.
 - [Phase 3 deployment report](PHASE-3.md)
 - [Cross-device sync plan](SYNC-PLAN.md)
 - [Google Drive OAuth feasibility spike](SYNC-SPIKE.md)
+- [Sync S1 implementation report](SYNC-S1.md)
