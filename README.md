@@ -62,3 +62,4 @@ and recovery instructions.
 - [Cross-device sync plan](SYNC-PLAN.md)
 - [Google Drive OAuth feasibility spike](SYNC-SPIKE.md)
 - [Sync S1 implementation report](SYNC-S1.md)
+- [Sync S2 implementation report](SYNC-S2.md)

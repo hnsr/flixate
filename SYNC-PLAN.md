@@ -1,9 +1,9 @@
 # Cross-device sync plan
 
-Status: S0 completed on 2026-09-02 across localhost, GitHub Pages, Android Chrome,
-and the installed PWA. S1 state-schema and merge work is complete; S2's production
-Drive adapter is next. See [SYNC-SPIKE.md](SYNC-SPIKE.md) for the isolated probe and
-evidence matrix and [SYNC-S1.md](SYNC-S1.md) for the state-layer report.
+Status: S0 authorization feasibility, S1 deterministic state, and S2's production
+Drive adapter are complete. S3 account and sync UX is next. See
+[SYNC-SPIKE.md](SYNC-SPIKE.md), [SYNC-S1.md](SYNC-S1.md), and
+[SYNC-S2.md](SYNC-S2.md) for their implementation reports.
 
 ## Decision
 
@@ -290,6 +290,8 @@ Exit gate: the same inputs produce the same merged state in every order, and no
 tested offline/concurrent sequence loses the newest user decision.
 
 ### S2 — production Drive adapter
+
+Status: completed on 2026-09-02. See [SYNC-S2.md](SYNC-S2.md).
 
 - Implement list, download, create, and update through Drive REST/CORS.
 - Reuse an unexpired locally saved token, purge it predictably, debounce writes,
