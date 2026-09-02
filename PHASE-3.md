@@ -58,6 +58,15 @@ run it once manually. Normal app pushes remain independent from that schedule.
 
 Reference: [Downloading workflow artifacts](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts)
 
+### Split-workflow verification
+
+The first fast deployment passed on 2026-09-02 in
+[workflow run 33678297769](https://github.com/hnsr/flixate/actions/runs/33678297769).
+It found, downloaded, and validated the prior 171,685-title catalog artifact; ran
+the full unit suite, type checker, and production build; and uploaded the Pages
+artifact in 26 seconds. Pages deployment took another 9 seconds. No catalog refresh
+workflow was triggered by the push.
+
 ## PWA behavior
 
 The service worker now uses prompt-based updates. It checks hourly while Flixate is
