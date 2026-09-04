@@ -94,7 +94,10 @@ export function requestDriveAccess(
         resolve({
           accessToken: response.access_token,
           expiresAt: Date.now() + Math.max(0, response.expires_in ?? 0) * 1_000,
-          scope: response.scope ?? "",
+          // GIS may omit `scope` when it exactly matches the requested grant. This
+          // client requests only drive.appdata, so that successful response is still
+          // unambiguous and safe to persist until its stated expiry.
+          scope: response.scope ?? DRIVE_APPDATA_SCOPE,
         });
       },
       error_callback(error) {

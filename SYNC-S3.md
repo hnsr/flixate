@@ -77,9 +77,23 @@ replacement safety, optimized interaction-triggered reconnection with the login
 hint, modal actions and focus, cross-device engine behavior, and all previous app,
 backup, catalog, and deployment invariants.
 
-At implementation handoff, 76 unit/integration tests, both Playwright browser tests,
+At implementation handoff, 78 unit/integration tests, both Playwright browser tests,
 TypeScript checking, and the production PWA build pass. The in-app browser was not
 connected for an additional visual inspection in this workspace session.
+
+## First-connect regression follow-up
+
+The initial deployed S3 build could loop back to the Google account chooser when
+account inspection failed before the merge-choice dialog. A successful Google token
+response can omit the redundant `scope` field when it matches the sole requested
+`drive.appdata` scope; Flixate now records that known requested scope instead of
+rejecting the otherwise valid grant. Account-inspection retries also reuse the saved
+unexpired token rather than forcing another chooser, while account changes still
+explicitly request one. Finally, concrete errors are no longer masked as offline
+merely because `navigator.onLine` reports an unreliable false value.
+
+Regression coverage exercises both the omitted-scope response and a failed account
+inspection followed by a chooser-free retry.
 
 ## Deployed acceptance checklist
 

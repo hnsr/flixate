@@ -65,11 +65,11 @@ function initialStatus(metadata: SyncMetadataV1): DriveSyncStatus {
 }
 
 function describeError(error: unknown): DriveSyncStatus {
-  if (!navigator.onLine || (error instanceof DriveRequestError && error.retryable)) {
+  if (error instanceof DriveRequestError && error.retryable) {
     return {
       kind: "offline",
       label: "Waiting to sync",
-      detail: "Your changes are safe in this browser. Flixate will retry from a later interaction.",
+      detail: `${error.message} Your changes are safe in this browser; retry from a later interaction.`,
     };
   }
   if (error instanceof DriveAuthorizationRequiredError) {
@@ -219,7 +219,9 @@ export function useDriveSync(options: UseDriveSyncOptions): DriveSyncController 
       detail: "Choose the Google account whose private Drive data Flixate should use.",
     });
     try {
-      const account = await service.authorizeAndInspectAccount({ prompt: "select_account" });
+      const account = !metadata.current.account && authorization?.currentGrant()
+        ? await service.inspectAuthorizedAccount()
+        : await service.authorizeAndInspectAccount({ prompt: "select_account" });
       setPendingAccount(account);
       setStatus({
         kind: "ready",
@@ -229,7 +231,7 @@ export function useDriveSync(options: UseDriveSyncOptions): DriveSyncController 
     } catch (error) {
       setStatus(describeError(error));
     }
-  }, [googleError, googleReady, service]);
+  }, [authorization, googleError, googleReady, service]);
 
   const confirmConnection = useCallback(async (choice: ConnectionChoice): Promise<void> => {
     if (!pendingAccount || !service) return;

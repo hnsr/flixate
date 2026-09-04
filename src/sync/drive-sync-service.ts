@@ -42,11 +42,21 @@ export class DriveSyncService {
     request: DriveAccessRequest = {},
   ): Promise<SyncAccountIdentity> {
     const grant = await this.authorization.requestNew(request);
+    return this.inspectAccount(grant.accessToken);
+  }
+
+  async inspectAuthorizedAccount(): Promise<SyncAccountIdentity> {
+    const grant = this.authorization.currentGrant();
+    if (!grant) throw new DriveAuthorizationRequiredError();
+    return this.inspectAccount(grant.accessToken);
+  }
+
+  private async inspectAccount(accessToken: string): Promise<SyncAccountIdentity> {
     try {
-      return await this.createTransport(grant.accessToken).getAccount();
+      return await this.createTransport(accessToken).getAccount();
     } catch (error) {
       if (error instanceof DriveRequestError && error.authorizationFailed) {
-        this.authorization.invalidate(grant.accessToken);
+        this.authorization.invalidate(accessToken);
         throw new DriveAuthorizationRequiredError(error);
       }
       throw error;

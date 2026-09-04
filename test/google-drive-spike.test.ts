@@ -90,6 +90,22 @@ describe("Google Drive feasibility probe", () => {
     expect(requestOptions).toEqual({ prompt: "", login_hint: "viewer@example.com" });
   });
 
+  it("records the requested app-data scope when Google omits a redundant scope field", async () => {
+    const oauth2: GoogleOAuth2 = {
+      initTokenClient(config) {
+        return {
+          requestAccessToken() {
+            config.callback({ access_token: "fresh-token", expires_in: 3_600 });
+          },
+        };
+      },
+    };
+
+    await expect(requestDriveAccess(oauth2, "public-client-id")).resolves.toMatchObject({
+      scope: DRIVE_APPDATA_SCOPE,
+    });
+  });
+
   it("restores only an unexpired saved token while retaining the account after expiry", () => {
     const values = new Map<string, string>();
     const storage = {

@@ -22,7 +22,10 @@ class HookStore implements SyncStateStore {
   saveMetadata(metadata: SyncMetadataV1): void { this.metadata = metadata; }
 }
 
-function installGoogle(requests: Array<{ prompt?: string; login_hint?: string }>): void {
+function installGoogle(
+  requests: Array<{ prompt?: string; login_hint?: string }>,
+  includeScope = true,
+): void {
   const oauth2: GoogleOAuth2 = {
     initTokenClient(config) {
       return {
@@ -31,7 +34,7 @@ function installGoogle(requests: Array<{ prompt?: string; login_hint?: string }>
           config.callback({
             access_token: "test-token",
             expires_in: 3_600,
-            scope: DRIVE_APPDATA_SCOPE,
+            ...(includeScope ? { scope: DRIVE_APPDATA_SCOPE } : {}),
           });
         },
       };
@@ -67,7 +70,7 @@ afterEach(() => {
 describe("Drive sync React integration", () => {
   it("inspects an account, waits for an explicit merge choice, then synchronizes", async () => {
     const requests: Array<{ prompt?: string; login_hint?: string }> = [];
-    installGoogle(requests);
+    installGoogle(requests, false);
     installDriveFetch();
     const store = new HookStore({ version: 1, deviceId: DEVICE_A, account: null });
     const { result } = renderHook(() => useDriveSync({
@@ -85,6 +88,39 @@ describe("Drive sync React integration", () => {
     await act(async () => { await result.current.confirmConnection("merge"); });
     expect(store.metadata.account?.permissionId).toBe("account-a");
     expect(result.current.status.kind).toBe("synced");
+  });
+
+  it("retries account inspection with the saved token instead of reopening Google", async () => {
+    const requests: Array<{ prompt?: string; login_hint?: string }> = [];
+    installGoogle(requests);
+    let accountChecks = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("/about?")) {
+        accountChecks++;
+        if (accountChecks === 1) return new Response("not-json");
+        return Response.json({
+          user: { permissionId: "account-a", emailAddress: "viewer@example.test" },
+        });
+      }
+      return Response.json({ error: "unexpected" }, { status: 500 });
+    }));
+    const store = new HookStore({ version: 1, deviceId: DEVICE_A, account: null });
+    const { result } = renderHook(() => useDriveSync({
+      clientId: "public-client-id",
+      store,
+      metadata: store.metadata,
+    }));
+    await waitFor(() => expect(result.current.googleReady).toBe(true));
+
+    await act(async () => { await result.current.connect(); });
+    expect(result.current.pendingAccount).toBeNull();
+    expect(result.current.status.detail).toContain("malformed JSON");
+    await act(async () => { await result.current.connect(); });
+
+    expect(result.current.pendingAccount?.permissionId).toBe("account-a");
+    expect(requests).toHaveLength(1);
+    expect(accountChecks).toBe(2);
   });
 
   it("uses the next local interaction to reconnect with the remembered account hint", async () => {
