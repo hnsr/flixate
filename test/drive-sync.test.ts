@@ -229,6 +229,98 @@ describe("production Drive transport", () => {
     await transport.writeOwnedStateFile(DEVICE_A, null, envelope(DEVICE_A, emptySyncState()));
     expect(calls).toEqual(["create", "list", "update"]);
   });
+
+  it("persists an updated seen mark for a fresh browser installation", async () => {
+    type StoredFile = DriveStateFile & { content: string };
+    const files = new Map<string, StoredFile>();
+    let nextId = 0;
+    let modifiedSecond = 0;
+    const responseFor = (stored: StoredFile) => ({
+      id: stored.id,
+      name: stored.name,
+      modifiedTime: stored.modifiedTime,
+      size: String(stored.content.length),
+    });
+    const fetcher = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/about")) {
+        return jsonResponse({
+          user: {
+            permissionId: "account-a",
+            emailAddress: "viewer@example.test",
+            displayName: "Viewer",
+          },
+        });
+      }
+      if (url.hostname === "www.googleapis.com" && url.pathname === "/drive/v3/files") {
+        return jsonResponse({ files: [...files.values()].map(responseFor) });
+      }
+      if (url.hostname === "www.googleapis.com" && url.searchParams.get("alt") === "media") {
+        const id = decodeURIComponent(url.pathname.split("/").at(-1) ?? "");
+        const stored = files.get(id);
+        return stored ? new Response(stored.content) : jsonResponse({ error: "missing" }, 404);
+      }
+      if (url.hostname === "www.googleapis.com" && init?.method === "POST") {
+        const body = String(init.body);
+        const content = body
+          .split("\r\nContent-Type: application/json\r\n\r\n")[1]
+          ?.split("\r\n--flixate-")[0];
+        const metadataText = body
+          .split("\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n")[1]
+          ?.split("\r\n--flixate-")[0];
+        if (!content || !metadataText) return jsonResponse({ error: "bad multipart" }, 400);
+        const metadata = JSON.parse(metadataText) as { name: string };
+        const id = `file-${++nextId}`;
+        const stored: StoredFile = {
+          id,
+          name: metadata.name,
+          modifiedTime: `2024-09-02T12:00:${String(++modifiedSecond).padStart(2, "0")}.000Z`,
+          size: content.length,
+          content,
+        };
+        files.set(id, stored);
+        return jsonResponse(responseFor(stored));
+      }
+      if (url.hostname === "www.googleapis.com" && init?.method === "PATCH") {
+        const id = decodeURIComponent(url.pathname.split("/").at(-1) ?? "");
+        const stored = files.get(id);
+        if (!stored) return jsonResponse({ error: "missing" }, 404);
+        stored.content = String(init.body);
+        stored.size = stored.content.length;
+        stored.modifiedTime = `2024-09-02T12:00:${String(++modifiedSecond).padStart(2, "0")}.000Z`;
+        return jsonResponse(responseFor(stored));
+      }
+      return jsonResponse({ error: `unexpected ${url}` }, 500);
+    }) as unknown as typeof fetch;
+
+    const browserA = new MemorySyncStore(emptySyncState(), boundMetadata(DEVICE_A));
+    const transportA = new GoogleDriveStateTransport("token-a", { fetcher });
+    await new DriveSyncEngine(transportA, browserA, () => NOW).synchronize();
+
+    browserA.state = applyBooleanChange(
+      browserA.state,
+      DEVICE_A,
+      "movie:1",
+      "seen",
+      true,
+      "2024-09-02T12:01:00.000Z",
+    );
+    await new DriveSyncEngine(
+      transportA,
+      browserA,
+      () => "2024-09-02T12:02:00.000Z",
+    ).synchronize();
+
+    const browserB = new MemorySyncStore(emptySyncState(), boundMetadata(DEVICE_B));
+    await new DriveSyncEngine(
+      new GoogleDriveStateTransport("token-b", { fetcher }),
+      browserB,
+      () => "2024-09-02T12:03:00.000Z",
+    ).synchronize();
+
+    expect(files).toHaveLength(2);
+    expect(browserB.state.titles["movie:1"]?.seen?.value).toBe(true);
+  });
 });
 
 describe("Drive token session and authorization", () => {

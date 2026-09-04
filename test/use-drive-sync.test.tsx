@@ -194,10 +194,66 @@ describe("Drive sync React integration", () => {
     }));
 
     await waitFor(() => expect(result.current.status.kind).toBe("synced"));
+    expect(result.current.status.detail).toContain("Saved 1 seen title to Google Drive");
     expect(requests).toEqual([]);
     const upload = fetcher.mock.calls.find(([input]) => String(input).includes("uploadType=multipart"));
     expect(upload?.[1]?.body).toContain('"movie:1"');
     expect(upload?.[1]?.body).toContain('"value":true');
+  });
+
+  it("immediately uploads a seen change made after the connected startup sync", async () => {
+    const requests: Array<{ prompt?: string; login_hint?: string }> = [];
+    installGoogle(requests);
+    const fetcher = installDriveFetch();
+    saveDriveGrant({
+      accessToken: "saved-token",
+      expiresAt: Date.now() + 3_600_000,
+      scope: DRIVE_APPDATA_SCOPE,
+    });
+    const store = new HookStore({
+      version: 1,
+      deviceId: DEVICE_A,
+      account: {
+        permissionId: "account-a",
+        emailAddress: "viewer@example.test",
+        displayName: "Viewer",
+        connectedAt: "2024-09-02T12:00:00.000Z",
+      },
+    });
+    const { result } = renderHook(() => useDriveSync({
+      clientId: "public-client-id",
+      store,
+      metadata: store.metadata,
+    }));
+    await waitFor(() => expect(result.current.status.kind).toBe("synced"));
+    fetcher.mockClear();
+
+    store.state = applyBooleanChange(
+      store.state,
+      DEVICE_A,
+      "movie:1",
+      "seen",
+      true,
+      "2026-09-04T12:00:00.000Z",
+    );
+    await act(async () => {
+      result.current.afterLocalChange();
+      await Promise.resolve();
+    });
+    expect(fetcher).toHaveBeenCalled();
+
+    await waitFor(
+      () => expect(fetcher.mock.calls.some(([input]) => String(input).includes("uploadType=multipart")))
+        .toBe(true),
+      { timeout: 2_000 },
+    );
+    const upload = fetcher.mock.calls.find(([input]) => String(input).includes("uploadType=multipart"));
+    expect(upload?.[1]?.body).toContain('"movie:1"');
+    expect(upload?.[1]?.body).toContain('"value":true');
+    await waitFor(() => {
+      expect(result.current.status.detail).toContain("Saved 1 seen title to Google Drive");
+    });
+    expect(requests).toEqual([]);
   });
 
   it("restores the previous binding when Drive replacement cannot be read safely", async () => {

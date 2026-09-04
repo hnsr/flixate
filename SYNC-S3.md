@@ -5,9 +5,10 @@ Status: implemented on 2026-09-02; deployed acceptance pending
 ## Outcome
 
 Google Drive synchronization is now connected to Flixate's real seen-history flow.
-Seen actions remain immediate and local, while connected browsers schedule S2's
-debounced synchronization afterward. The old query-gated OAuth probe is no longer
-rendered; the production controls use the same public OAuth client configuration.
+Seen actions remain immediate and local, while connected browsers begin Drive
+synchronization afterward and coalesce any changes made during the active request.
+The old query-gated OAuth probe is no longer rendered; the production controls use
+the same public OAuth client configuration.
 
 ## Local-state integration
 
@@ -22,7 +23,7 @@ Every seen action and backup import:
 1. updates the canonical in-memory state;
 2. persists both the versioned local sync document and compatible user state;
 3. updates React immediately; and
-4. schedules sync only afterward when an account is connected.
+4. starts sync only afterward when an account is connected.
 
 The same-tab state adapter is also the S2 engine's storage boundary, ensuring merged
 Drive state is committed locally before upload. Storage events merge changes from
@@ -61,8 +62,8 @@ the same recovery path explicitly.
 
 OAuth, offline, malformed-file, and Drive failures never roll back the local user
 action. Status text explains whether Flixate is waiting, needs reconnection, or
-ignored a corrupt Drive document. Rapid actions are debounced, and an edit during an
-active sync causes at most one follow-up pass.
+ignored a corrupt Drive document. Rapid actions during an active request are
+coalesced, and an intervening edit causes at most one follow-up pass.
 
 ## Accessibility and responsive behavior
 
@@ -80,7 +81,7 @@ replacement safety, optimized interaction-triggered reconnection with the login
 hint, modal actions and focus, cross-device engine behavior, and all previous app,
 backup, catalog, and deployment invariants.
 
-At implementation handoff, 80 unit/integration tests, both Playwright browser tests,
+At implementation handoff, 82 unit/integration tests, both Playwright browser tests,
 TypeScript checking, and the production PWA build pass. The in-app browser was not
 connected for an additional visual inspection in this workspace session.
 
@@ -116,6 +117,15 @@ its saved token is valid. If the token has expired, startup remains non-interact
 and the next relevant user action performs the optimized reconnection. Regression
 coverage verifies that a locally persisted mark is uploaded after reload without a
 new OAuth request.
+
+A further live reset test still failed despite allowing the scheduled upload several
+seconds to run. The complete production REST adapter cycle—create an empty device
+file, update it with a seen mark, then discover and merge it from a fresh device—now
+has regression coverage and succeeds. To remove the remaining browser-only timing
+variable, connected history changes now start synchronization immediately rather
+than waiting on an idle debounce. Successful status details also state the exact
+number of seen titles included in the acknowledged Drive write or match, so live
+acceptance can distinguish a real one-title upload from an empty successful sync.
 
 ## Deployed acceptance checklist
 

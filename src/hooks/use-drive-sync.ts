@@ -95,6 +95,10 @@ function describeError(error: unknown): DriveSyncStatus {
 
 function successfulStatus(result: DriveSyncResult): DriveSyncStatus {
   const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const seenCount = Object.values(result.state.titles)
+    .filter((title) => title?.seen?.value)
+    .length;
+  const seenSummary = `${seenCount} seen ${seenCount === 1 ? "title" : "titles"}`;
   if (result.warnings.length > 0) {
     return {
       kind: "attention",
@@ -106,8 +110,8 @@ function successfulStatus(result: DriveSyncResult): DriveSyncStatus {
     kind: "synced",
     label: `Synced at ${time}`,
     detail: result.write === "unchanged"
-      ? "This browser and Google Drive already matched."
-      : "Your seen history is up to date in Google Drive.",
+      ? `This browser and Google Drive matched with ${seenSummary}.`
+      : `Saved ${seenSummary} to Google Drive.`,
   };
 }
 
@@ -309,7 +313,9 @@ export function useDriveSync(options: UseDriveSyncOptions): DriveSyncController 
   const afterLocalChange = useCallback(() => {
     if (!metadata.current.account || !authorization || !coordinator) return;
     if (authorization.currentGrant()) {
-      coordinator.schedule();
+      void coordinator.flush().catch(() => {
+        // performSync records the user-facing failure while the local change stays safe.
+      });
     } else {
       // This function is called directly by seen/import button handlers, retaining
       // the user activation Google requires for optimized reauthorization.

@@ -74,7 +74,8 @@ one of two explicit actions:
    confirmation and offers a JSON export first.
 
 Normal seen/watchlist actions always update local storage synchronously. If the
-saved token is still valid, Flixate schedules a debounced sync. If it has expired,
+saved token is still valid, Flixate begins synchronizing immediately and coalesces
+any further changes made while that request is active. If the token has expired,
 the same user gesture initiates a fresh token request using the remembered account
 hint, then synchronizes. A Drive failure never blocks browsing or changes the local
 result of the user's action; the mutation remains queued locally. On a later page
