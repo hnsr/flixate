@@ -50,11 +50,14 @@ local history and does not delete remote data.
 ## Authorization and failure behavior
 
 Google Identity is preloaded when sync is configured so a seen or import button
-retains the user activation required for optimized authorization. A connected user
-with an expired token does not need to find a reconnect button: the next local
-history interaction requests a token immediately using an empty prompt and the
-remembered email hint, then synchronizes. **Sync now** provides the same recovery
-path explicitly.
+retains the user activation required for optimized authorization. A connected
+browser with a valid saved token synchronizes automatically on load, which both
+retrieves changes from other devices and flushes a local edit whose debounced upload
+was interrupted by a reload. A connected user with an expired token does not need
+to find a reconnect button: the next local history interaction requests a token
+immediately using an empty prompt and the remembered email hint, then synchronizes.
+No authorization popup opens merely because the page loaded. **Sync now** provides
+the same recovery path explicitly.
 
 OAuth, offline, malformed-file, and Drive failures never roll back the local user
 action. Status text explains whether Flixate is waiting, needs reconnection, or
@@ -77,7 +80,7 @@ replacement safety, optimized interaction-triggered reconnection with the login
 hint, modal actions and focus, cross-device engine behavior, and all previous app,
 backup, catalog, and deployment invariants.
 
-At implementation handoff, 79 unit/integration tests, both Playwright browser tests,
+At implementation handoff, 80 unit/integration tests, both Playwright browser tests,
 TypeScript checking, and the production PWA build pass. The in-app browser was not
 connected for an additional visual inspection in this workspace session.
 
@@ -103,18 +106,30 @@ transport now preserves that receiver-free call, and its regression test asserts
 exact invocation contract. Safe underlying browser error text is also retained if a
 different network failure occurs.
 
+The next live check found a reload-sized gap in the otherwise local-first behavior.
+A seen action persisted immediately in the browser but scheduled its Drive upload
+after a short debounce; a hard refresh could cancel that timer. Although the local
+mark correctly survived the refresh, the reloaded app did not synchronize until a
+later Drive-relevant interaction. Clearing site data first could therefore remove
+the only copy. A previously connected browser now synchronizes on startup whenever
+its saved token is valid. If the token has expired, startup remains non-interactive
+and the next relevant user action performs the optimized reconnection. Regression
+coverage verifies that a locally persisted mark is uploaded after reload without a
+new OAuth request.
+
 ## Deployed acceptance checklist
 
 After the fast app deployment succeeds:
 
 1. Open sync settings on the existing browser and connect the intended Google
    account using **Merge browser and Drive**.
-2. Confirm the state reaches `Synced at …` and normal browsing/seen actions remain
+2. Confirm the state reaches `Synced at …`, mark a title seen, and wait for the
+   brief follow-up sync to complete; normal browsing and the seen action remain
    instant.
 3. Open Flixate in a second browser profile or device, connect the same account, and
    choose **Merge browser and Drive**.
-4. Mark one title seen on device A, then use any seen action or **Sync now** on device
-   B and confirm it converges.
+4. Mark one title seen on device A, wait for its sync to complete, then load or
+   refresh device B with a still-valid token and confirm it converges automatically.
 5. Simulate token expiry by waiting for normal expiry if convenient; otherwise the
    S0 expiry result remains acceptable for rollout. Confirm a later seen action shows
    at most the brief self-closing Google popup and completes sync.

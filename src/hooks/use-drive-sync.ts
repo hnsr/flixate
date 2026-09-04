@@ -114,6 +114,8 @@ function successfulStatus(result: DriveSyncResult): DriveSyncStatus {
 export function useDriveSync(options: UseDriveSyncOptions): DriveSyncController {
   const oauth = useRef<GoogleOAuth2 | null>(null);
   const metadata = useRef(options.metadata);
+  const connectedOnLoad = useRef(Boolean(options.metadata.account));
+  const startupSyncAttempted = useRef(false);
   metadata.current = options.metadata;
   const [googleReady, setGoogleReady] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
@@ -178,6 +180,25 @@ export function useDriveSync(options: UseDriveSyncOptions): DriveSyncController 
     [service],
   );
   useEffect(() => () => coordinator?.dispose(), [coordinator]);
+
+  useEffect(() => {
+    if (
+      startupSyncAttempted.current
+      || !connectedOnLoad.current
+      || !googleReady
+      || !authorization
+      || !coordinator
+    ) return;
+
+    startupSyncAttempted.current = true;
+    if (!authorization.currentGrant()) {
+      setStatus(describeError(new DriveAuthorizationRequiredError()));
+      return;
+    }
+    void coordinator.flush().catch(() => {
+      // performSync records the actionable status while local state remains safe.
+    });
+  }, [authorization, coordinator, googleReady]);
 
   const reconnect = useCallback(async (): Promise<void> => {
     if (!authorization || !coordinator || !googleReady) {

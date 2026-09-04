@@ -77,7 +77,11 @@ Normal seen/watchlist actions always update local storage synchronously. If the
 saved token is still valid, Flixate schedules a debounced sync. If it has expired,
 the same user gesture initiates a fresh token request using the remembered account
 hint, then synchronizes. A Drive failure never blocks browsing or changes the local
-result of the user's action; the mutation remains queued locally.
+result of the user's action; the mutation remains queued locally. On a later page
+load, an already connected browser automatically synchronizes when its saved token
+is still valid, recovering uploads interrupted by reload and retrieving other
+devices' changes without opening an OAuth prompt. An expired token remains
+non-interactive until the next relevant user action.
 
 ## OAuth and account identity
 
@@ -330,9 +334,10 @@ replacement cannot silently disclose or erase the existing browser's state.
 - Document setup, normal use, limitations, disconnect, recovery, and remote deletion.
 - Roll out as optional; retain local-only mode permanently.
 
-Exit gate: seen changes converge across supported devices after a Drive-relevant
-interaction or explicit sync, offline/local-only use remains reliable, and no server
-or database maintenance is introduced.
+Exit gate: seen changes converge across supported devices on load when authorization
+is still valid, or after a Drive-relevant interaction/explicit sync when renewal is
+needed; offline/local-only use remains reliable, and no server or database
+maintenance is introduced.
 
 ## Acceptance criteria
 

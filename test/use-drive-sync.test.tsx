@@ -1,13 +1,19 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useDriveSync } from "../src/hooks/use-drive-sync.js";
+import { saveDriveGrant } from "../src/sync/drive-session.js";
 import type { SyncStateStore } from "../src/sync/sync-engine.js";
 import {
   DRIVE_APPDATA_SCOPE,
   type GoogleOAuth2,
 } from "../src/sync/google-identity.js";
 import type { SyncMetadataV1 } from "../src/sync/sync-metadata.js";
-import { emptySyncState, syncFileName, type SyncStateV1 } from "../src/sync/sync-state.js";
+import {
+  applyBooleanChange,
+  emptySyncState,
+  syncFileName,
+  type SyncStateV1,
+} from "../src/sync/sync-state.js";
 
 const DEVICE_A = "00000000-0000-4000-8000-000000000001";
 
@@ -43,8 +49,8 @@ function installGoogle(
   vi.stubGlobal("google", { accounts: { oauth2 } });
 }
 
-function installDriveFetch(): void {
-  vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+function installDriveFetch() {
+  const fetcher = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
     const url = String(input);
     if (url.includes("/about?")) {
       return Response.json({
@@ -60,7 +66,9 @@ function installDriveFetch(): void {
     }
     if (url.includes("/drive/v3/files?")) return Response.json({ files: [] });
     return Response.json({ error: "unexpected" }, { status: 500 });
-  }));
+  });
+  vi.stubGlobal("fetch", fetcher);
+  return fetcher;
 }
 
 afterEach(() => {
@@ -143,10 +151,53 @@ describe("Drive sync React integration", () => {
       metadata: store.metadata,
     }));
     await waitFor(() => expect(result.current.googleReady).toBe(true));
+    await waitFor(() => expect(result.current.status.kind).toBe("attention"));
+    expect(requests).toEqual([]);
 
     act(() => { result.current.afterLocalChange(); });
     await waitFor(() => expect(result.current.status.kind).toBe("synced"));
     expect(requests).toEqual([{ prompt: "", login_hint: "viewer@example.test" }]);
+  });
+
+  it("automatically flushes locally persisted changes after a reload with a valid saved token", async () => {
+    const requests: Array<{ prompt?: string; login_hint?: string }> = [];
+    installGoogle(requests);
+    const fetcher = installDriveFetch();
+    saveDriveGrant({
+      accessToken: "saved-token",
+      expiresAt: Date.now() + 3_600_000,
+      scope: DRIVE_APPDATA_SCOPE,
+    });
+    const store = new HookStore({
+      version: 1,
+      deviceId: DEVICE_A,
+      account: {
+        permissionId: "account-a",
+        emailAddress: "viewer@example.test",
+        displayName: "Viewer",
+        connectedAt: "2024-09-02T12:00:00.000Z",
+      },
+    });
+    store.state = applyBooleanChange(
+      emptySyncState(),
+      DEVICE_A,
+      "movie:1",
+      "seen",
+      true,
+      "2026-09-04T12:00:00.000Z",
+    );
+
+    const { result } = renderHook(() => useDriveSync({
+      clientId: "public-client-id",
+      store,
+      metadata: store.metadata,
+    }));
+
+    await waitFor(() => expect(result.current.status.kind).toBe("synced"));
+    expect(requests).toEqual([]);
+    const upload = fetcher.mock.calls.find(([input]) => String(input).includes("uploadType=multipart"));
+    expect(upload?.[1]?.body).toContain('"movie:1"');
+    expect(upload?.[1]?.body).toContain('"value":true');
   });
 
   it("restores the previous binding when Drive replacement cannot be read safely", async () => {
