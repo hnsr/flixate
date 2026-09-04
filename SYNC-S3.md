@@ -77,7 +77,7 @@ replacement safety, optimized interaction-triggered reconnection with the login
 hint, modal actions and focus, cross-device engine behavior, and all previous app,
 backup, catalog, and deployment invariants.
 
-At implementation handoff, 78 unit/integration tests, both Playwright browser tests,
+At implementation handoff, 79 unit/integration tests, both Playwright browser tests,
 TypeScript checking, and the production PWA build pass. The in-app browser was not
 connected for an additional visual inspection in this workspace session.
 
@@ -94,6 +94,14 @@ merely because `navigator.onLine` reports an unreliable false value.
 
 Regression coverage exercises both the omitted-scope response and a failed account
 inspection followed by a chooser-free retry.
+
+A second deployed check exposed a browser-only calling-convention difference in the
+production transport: it stored native `fetch` on the transport and invoked it as an
+object method, supplying the transport instance as the native function's receiver.
+The successful S0 probe had invoked the same function plainly. The production
+transport now preserves that receiver-free call, and its regression test asserts the
+exact invocation contract. Safe underlying browser error text is also retained if a
+different network failure occurs.
 
 ## Deployed acceptance checklist
 

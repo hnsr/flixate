@@ -251,7 +251,10 @@ export class GoogleDriveStateTransport implements DriveStateTransport {
       try {
         const headers = new Headers(init.headers);
         headers.set("Authorization", `Bearer ${this.accessToken}`);
-        const response = await this.fetcher(input, { ...init, headers });
+        // Keep fetch as a plain function call. Some browser implementations reject
+        // a native fetch invoked with this transport instance as its receiver.
+        const fetcher = this.fetcher;
+        const response = await fetcher(input, { ...init, headers });
         if (response.ok) return response.text();
         const detail = cleanErrorDetail(await response.text());
         const error = new DriveRequestError(
@@ -263,9 +266,14 @@ export class GoogleDriveStateTransport implements DriveStateTransport {
         lastError = error;
       } catch (error) {
         if (error instanceof DriveRequestError && !error.retryable) throw error;
+        const reason = error instanceof Error ? cleanErrorDetail(error.message) : "";
         lastError = error instanceof DriveRequestError
           ? error
-          : new DriveRequestError("Google Drive could not be reached.", null, true);
+          : new DriveRequestError(
+              `Google Drive could not be reached${reason ? `: ${reason}` : "."}`,
+              null,
+              true,
+            );
         if (!safeToRetry || attempt === attempts - 1) throw lastError;
       }
       await this.waitBeforeRetry(attempt);

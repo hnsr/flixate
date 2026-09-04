@@ -116,6 +116,18 @@ function boundMetadata(deviceId = DEVICE_A): SyncMetadataV1 {
 }
 
 describe("production Drive transport", () => {
+  it("invokes native-style fetch without binding the transport as its receiver", async () => {
+    let receiver: unknown = "not-called";
+    const fetcher = function (this: unknown) {
+      receiver = this;
+      return Promise.resolve(jsonResponse({ user: { permissionId: "account-a" } }));
+    } as typeof fetch;
+    const transport = new GoogleDriveStateTransport("token-a", { fetcher });
+
+    await transport.getAccount();
+    expect(receiver).toBeUndefined();
+  });
+
   it("paginates appDataFolder and returns only exact Flixate state filenames", async () => {
     const fetcher = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = new URL(String(input));
