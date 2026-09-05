@@ -427,7 +427,7 @@ Useful defaults:
 ### Later features
 
 - shareable filter presets;
-- watchlist/"maybe" state separate from seen;
+- multiple named watchlists, separate from seen state (scheduled for Phase 4 below);
 - personal rating and notes;
 - suggestions based on genres, score, and unseen state;
 - shared household state across different Google accounts;
@@ -540,15 +540,31 @@ Exit gate: normal use and active scheduled refresh require no server or database
 maintenance and remain within free GitHub limits; recovery from GitHub's inactivity
 disablement is documented and takes only a manual workflow re-enable/run.
 
-### Phase 4 — refinement (medium; after the sync track)
+### Phase 4 — year filtering, multiple watchlists, and refinement
 
-Status: ready to start. The promoted cross-device sync track completed its personal
-version-1 rollout on 2026-09-05.
+Status: ready to start; scope revised on 2026-09-05. The promoted cross-device sync
+track has completed its personal version-1 rollout.
 
-- Add remaining filters, presets, accessibility, keyboard use, and responsive polish.
+- Add release/first-air year filtering with optional lower and upper bounds.
+- Add multiple named personal watchlists: create, rename, and delete lists; add or
+  remove a title from one or more lists; and browse an individual list. List
+  membership is independent of seen state, and deleting a list must not erase seen
+  history or membership in other lists.
+- Keep watchlists usable locally and offline, synchronize lists and memberships
+  through the existing optional Google Drive connection, and include them in JSON
+  export/import. Extend the versioned state and backup formats with safe migration
+  and handling of older app versions; the existing single `watchlisted` boolean is
+  not sufficient for multiple lists. See [SYNC-PLAN.md](SYNC-PLAN.md).
+- Add filter presets; the exact preset interaction remains to be specified.
+- Improve the responsive/mobile layout where needed.
 - Tune parse/query performance from real catalog measurements and shard only if
   necessary.
-- Add snapshot-age and coverage indicators.
+- Fill any remaining gaps in snapshot-age and coverage indicators; the update date,
+  stale-catalog warning, and US+NL label already exist.
+
+Other filter refinements and a dedicated accessibility/keyboard improvement pass
+are removed from Phase 4's scope. Multiple watchlists are personal to each Google
+account; collaborative lists across different accounts remain a later feature.
 
 ### Phase 5 — cross-device sync (promoted)
 

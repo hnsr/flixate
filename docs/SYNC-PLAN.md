@@ -11,8 +11,9 @@ are complete. See
 
 Add optional, local-first synchronization through Google Drive's hidden
 `appDataFolder`. Each person connects their own Google account and receives an
-independent seen history and, later, watchlist on every connected browser. Flixate
-continues to work without an account, network, server, or database.
+independent seen history and, in Phase 4, multiple personal watchlists on every
+connected browser. Flixate continues to work without an account, network, server,
+or database.
 
 This track is deliberately scheduled before general Phase 4 refinement. The first
 step is a small feasibility spike: the architecture is only a go if Google's
@@ -133,7 +134,18 @@ Watchlists should extend the per-title record rather than introduce an unrelated
 sync system. Each independently mutable field needs its own value and change stamp,
 so a recent watchlist edit cannot accidentally overwrite a newer seen edit.
 
-S1 uses this logical shape (shown with abbreviated device IDs):
+Phase 4 now requires multiple named watchlists. It will extend the completed S1–S4
+implementation with stable list identifiers, list metadata, and independently
+mergeable membership for each title/list pair. Rename, deletion, and membership
+changes need deterministic conflict handling, including protection against deleted
+lists or removed memberships reappearing from an older device. Seen state remains
+independent. Versioned local, Drive, and backup formats need migration and explicit
+older-client handling before rollout. Lists remain private to one Google account;
+this does not introduce cross-account sharing or reopen the completed seen-sync
+rollout.
+
+S1 currently uses this logical shape (shown with abbreviated device IDs). Its
+reserved `watchlisted` boolean is not yet a multiple-watchlist implementation:
 
 ```json
 {
