@@ -36,6 +36,7 @@ npm run typecheck
 npm test
 npm run test:e2e
 npm run build
+npm run audit:production
 ```
 
 ## Deploy
@@ -64,3 +65,5 @@ and recovery instructions.
 - [Sync S1 implementation report](SYNC-S1.md)
 - [Sync S2 implementation report](SYNC-S2.md)
 - [Sync S3 implementation and rollout report](SYNC-S3.md)
+- [Google Drive sync guide](SYNC-GUIDE.md)
+- [Sync S4 production rollout report](SYNC-S4.md)

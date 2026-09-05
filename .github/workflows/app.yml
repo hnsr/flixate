@@ -63,6 +63,10 @@ jobs:
           VITE_CATALOG_MANIFEST_URL: data/live/manifest.json
           VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
         run: npm run build
+      - name: Audit the Pages artifact for personal data and credentials
+        env:
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
+        run: npm run audit:production
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:

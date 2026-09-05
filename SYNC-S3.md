@@ -1,6 +1,6 @@
 # Sync S3 implementation and rollout report
 
-Status: implemented on 2026-09-02; deployed acceptance pending
+Status: completed on 2026-09-05; remaining production rollout checks moved to S4
 
 ## Outcome
 
@@ -127,7 +127,7 @@ than waiting on an idle debounce. Successful status details also state the exact
 number of seen titles included in the acknowledged Drive write or match, so live
 acceptance can distinguish a real one-title upload from an empty successful sync.
 
-## Deployed acceptance checklist
+## S4 acceptance handoff
 
 After the fast app deployment succeeds:
 
@@ -147,5 +147,6 @@ After the fast app deployment succeeds:
 7. On Android Chrome and the installed PWA, inspect the narrow sync dialog and repeat
    one real seen-state round trip.
 
-Passing these checks completes S3's exit gate and allows S4 production rollout and
-security/privacy verification to begin.
+The first-connect, immediate-write, reload, and browser-reset recovery checks passed.
+The remaining multi-device, offline, and mobile checks now live in
+[SYNC-S4.md](SYNC-S4.md).

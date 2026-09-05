@@ -1,11 +1,11 @@
 # Cross-device sync plan
 
-Status: S0 authorization feasibility, S1 deterministic state, and S2's production
-Drive adapter are complete. S3 account and sync UX is implemented; deployed
-multi-device acceptance is pending. See
-[SYNC-SPIKE.md](SYNC-SPIKE.md), [SYNC-S1.md](SYNC-S1.md), and
-[SYNC-S2.md](SYNC-S2.md) for the foundation reports and [SYNC-S3.md](SYNC-S3.md)
-for the current rollout checklist.
+Status: S0 authorization feasibility, S1 deterministic state, S2's production Drive
+adapter, and S3 account/sync UX are complete. S4 production hardening is implemented;
+real-device acceptance and Google Cloud audience confirmation remain. See
+[SYNC-SPIKE.md](SYNC-SPIKE.md), [SYNC-S1.md](SYNC-S1.md),
+[SYNC-S2.md](SYNC-S2.md), [SYNC-S3.md](SYNC-S3.md), and
+[SYNC-S4.md](SYNC-S4.md).
 
 ## Decision
 
@@ -241,8 +241,9 @@ uninstalls the app from Drive, so Drive sync is not the sole backup mechanism.
 - Store no catalog data remotely: only title keys and personal state.
 - Do not put Google account identifiers into exported backups unless the user opts
   in; the opaque local binding belongs in sync metadata.
-- Disconnect revokes local use of the token. Offer a separate, clearly destructive
-  action if remote Flixate data deletion is ever implemented.
+- Disconnect revokes local use of the token without deleting data. The separate,
+  twice-confirmed **Delete Drive history** action removes only validated Flixate
+  app-data files, disconnects the browser, and retains its local history.
 
 ## Cost and operational fit
 
@@ -311,8 +312,9 @@ the adapter cannot write another device's document.
 
 ### S3 — account and sync UX
 
-Status: implemented on 2026-09-02; deployed first-connect and multi-device checks
-remain. See [SYNC-S3.md](SYNC-S3.md).
+Status: completed. Deployed first-connect, immediate-write, reload, and browser-reset
+recovery checks passed; true multi-device coverage continues in S4. See
+[SYNC-S3.md](SYNC-S3.md).
 
 - Add connect, first-merge confirmation, sync status, manual retry, and disconnect.
 - Initiate optimized reauthorization from the next Drive-relevant user action and
@@ -325,6 +327,9 @@ Exit gate: a new user can connect without documentation, while account switching
 replacement cannot silently disclose or erase the existing browser's state.
 
 ### S4 — production rollout
+
+Status: in progress on 2026-09-05. Automated hardening and documentation are
+implemented; see [SYNC-S4.md](SYNC-S4.md) for the remaining real-device gates.
 
 - Configure the production OAuth client and documented consent-screen audience.
 - Test two desktop profiles, Android Chrome, an installed PWA, offline edits, token

@@ -35,6 +35,11 @@ export type DriveSyncResult = {
   state: SyncStateV1;
 };
 
+export type DriveDeleteResult = {
+  accountPermissionId: string;
+  deletedFileCount: number;
+};
+
 export type DriveSyncOptions = {
   localState?: "merge" | "remote";
 };
@@ -145,6 +150,23 @@ export class DriveSyncEngine {
       warnings,
       write: existing ? "updated" : "created",
       state: merged,
+    };
+  }
+
+  async deleteRemoteState(): Promise<DriveDeleteResult> {
+    const metadata = await this.store.loadMetadata();
+    if (!metadata.account) throw new SyncAccountNotBoundError();
+
+    const account = await this.transport.getAccount();
+    if (account.permissionId !== metadata.account.permissionId) {
+      throw new SyncAccountMismatchError(metadata.account.permissionId, account.permissionId);
+    }
+
+    const files = await this.transport.listStateFiles();
+    for (const file of files) await this.transport.deleteStateFile(file);
+    return {
+      accountPermissionId: account.permissionId,
+      deletedFileCount: files.length,
     };
   }
 }

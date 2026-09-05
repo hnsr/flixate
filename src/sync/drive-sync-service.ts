@@ -10,6 +10,7 @@ import type { DriveAccessRequest } from "./google-identity.js";
 import type { SyncAccountIdentity } from "./sync-metadata.js";
 import {
   DriveSyncEngine,
+  type DriveDeleteResult,
   type DriveSyncOptions,
   type DriveSyncResult,
   type SyncStateStore,
@@ -76,6 +77,28 @@ export class DriveSyncService {
         this.store,
         this.now,
       ).synchronize({ localState: options.localState });
+    } catch (error) {
+      if (error instanceof DriveRequestError && error.authorizationFailed) {
+        this.authorization.invalidate(grant.accessToken);
+        throw new DriveAuthorizationRequiredError(error);
+      }
+      throw error;
+    }
+  }
+
+  async deleteRemoteState(options: DriveSyncServiceOptions = {}): Promise<DriveDeleteResult> {
+    let grant = this.authorization.currentGrant();
+    if (!grant) {
+      if (!options.authorize) throw new DriveAuthorizationRequiredError();
+      grant = await this.authorization.requestNew(options.accessRequest);
+    }
+
+    try {
+      return await new DriveSyncEngine(
+        this.createTransport(grant.accessToken),
+        this.store,
+        this.now,
+      ).deleteRemoteState();
     } catch (error) {
       if (error instanceof DriveRequestError && error.authorizationFailed) {
         this.authorization.invalidate(grant.accessToken);

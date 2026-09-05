@@ -1050,12 +1050,42 @@ footer p {
 }
 
 .sync-panel-actions .danger-button {
-  margin-left: auto;
   color: var(--danger);
+}
+
+.sync-panel-actions .disconnect-button {
+  margin-left: auto;
 }
 
 .sync-footnote {
   margin-top: 16px;
+}
+
+.sync-delete-confirmation {
+  margin-top: 18px;
+  padding: 14px;
+  color: var(--text);
+  background: rgba(242, 124, 116, 0.07);
+  border: 1px solid rgba(242, 124, 116, 0.35);
+  border-radius: 12px;
+}
+
+.sync-delete-confirmation > strong {
+  display: block;
+  color: var(--danger);
+  font-size: 0.86rem;
+}
+
+.sync-delete-confirmation > p {
+  margin: 6px 0 13px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.sync-delete-confirmation .dialog-actions {
+  justify-content: flex-start;
+  margin-top: 0;
 }
 
 .dialog-close-button {
@@ -1502,7 +1532,7 @@ footer p {
     grid-template-columns: 1fr;
   }
 
-  .sync-panel-actions .danger-button {
+  .sync-panel-actions .disconnect-button {
     margin-left: 0;
   }
 

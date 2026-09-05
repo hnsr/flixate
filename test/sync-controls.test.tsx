@@ -36,6 +36,7 @@ function controller(overrides: Partial<DriveSyncController> = {}): DriveSyncCont
     cancelConnection: vi.fn(),
     syncNow: vi.fn(async () => undefined),
     disconnect: vi.fn(async () => undefined),
+    deleteRemoteData: vi.fn(async () => undefined),
     afterLocalChange: vi.fn(),
     ...overrides,
   };
@@ -116,5 +117,32 @@ describe("sync controls", () => {
     expect(screen.getByText("viewer@example.test")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     expect(sync.disconnect).toHaveBeenCalledOnce();
+  });
+
+  it("requires a second explicit action before deleting Drive history", async () => {
+    const user = userEvent.setup();
+    const sync = controller({
+      status: { kind: "synced", label: "Synced at 12:00", detail: "Up to date." },
+    });
+    render(
+      <SyncControls
+        metadata={metadata(true)}
+        controller={sync}
+        open
+        onOpenChange={vi.fn()}
+        onExport={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Delete Drive history" }));
+    expect(sync.deleteRemoteData).not.toHaveBeenCalled();
+    expect(screen.getByText(/another connected device can upload its copy again/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Permanently delete Drive history" })).toHaveFocus();
+
+    await user.click(screen.getByRole("button", { name: "Cancel deletion" }));
+    expect(sync.deleteRemoteData).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Delete Drive history" }));
+    await user.click(screen.getByRole("button", { name: "Permanently delete Drive history" }));
+    expect(sync.deleteRemoteData).toHaveBeenCalledOnce();
   });
 });

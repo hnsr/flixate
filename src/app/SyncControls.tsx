@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SyncAccountIdentity, SyncMetadataV1 } from "../sync/sync-metadata.js";
 import type { ConnectionChoice, DriveSyncController } from "../hooks/use-drive-sync.js";
 
@@ -70,7 +70,17 @@ export function SyncControls(props: SyncControlsProps): React.JSX.Element {
   const statusClass = `sync-status-dot is-${props.controller.status.kind}`;
   const trigger = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLElement>(null);
+  const deleteConfirmationButton = useRef<HTMLButtonElement>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const modalOpen = props.open || Boolean(props.controller.pendingAccount);
+
+  useEffect(() => {
+    if (!props.open || !account) setConfirmingDelete(false);
+  }, [account, props.open]);
+
+  useEffect(() => {
+    if (confirmingDelete) deleteConfirmationButton.current?.focus();
+  }, [confirmingDelete]);
 
   useEffect(() => {
     if (!modalOpen || !dialog.current) return;
@@ -166,14 +176,45 @@ export function SyncControls(props: SyncControlsProps): React.JSX.Element {
                   >Change account</button>
                   <button
                     type="button"
-                    className="text-button danger-button"
+                    className="text-button danger-button disconnect-button"
                     disabled={props.controller.busy}
                     onClick={() => void props.controller.disconnect()}
                   >Disconnect</button>
+                  <button
+                    type="button"
+                    className="text-button danger-button"
+                    disabled={props.controller.busy}
+                    onClick={() => setConfirmingDelete(true)}
+                  >Delete Drive history</button>
                 </div>
                 <p className="sync-footnote">
                   Disconnecting keeps the history already stored in this browser and does not delete Drive data.
                 </p>
+                {confirmingDelete && (
+                  <div className="sync-delete-confirmation" role="alert">
+                    <strong>Permanently delete the Drive copy?</strong>
+                    <p>
+                      This deletes every Flixate sync file in this account and disconnects this browser.
+                      Local seen history stays here. Another connected device can upload its copy again.
+                    </p>
+                    <div className="dialog-actions">
+                      <button
+                        ref={deleteConfirmationButton}
+                        type="button"
+                        className="secondary-button danger-button"
+                        disabled={props.controller.busy}
+                        onClick={() => void props.controller.deleteRemoteData()
+                          .finally(() => setConfirmingDelete(false))}
+                      >Permanently delete Drive history</button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={props.controller.busy}
+                        onClick={() => setConfirmingDelete(false)}
+                      >Cancel deletion</button>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <>

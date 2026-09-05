@@ -41,6 +41,7 @@ export type DriveSyncController = {
   cancelConnection(): void;
   syncNow(): Promise<void>;
   disconnect(): Promise<void>;
+  deleteRemoteData(): Promise<void>;
   afterLocalChange(): void;
 };
 
@@ -120,6 +121,7 @@ export function useDriveSync(options: UseDriveSyncOptions): DriveSyncController 
   const metadata = useRef(options.metadata);
   const connectedOnLoad = useRef(Boolean(options.metadata.account));
   const startupSyncAttempted = useRef(false);
+  const deletingRemoteData = useRef(false);
   metadata.current = options.metadata;
   const [googleReady, setGoogleReady] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
@@ -310,8 +312,47 @@ export function useDriveSync(options: UseDriveSyncOptions): DriveSyncController 
     setStatus(initialStatus(disconnected));
   }, [authorization, options.store]);
 
+  const deleteRemoteData = useCallback(async (): Promise<void> => {
+    if (
+      deletingRemoteData.current
+      || !metadata.current.account
+      || !authorization
+      || !service
+      || !googleReady
+    ) return;
+    deletingRemoteData.current = true;
+    setStatus({
+      kind: "syncing",
+      label: "Deleting Drive history…",
+      detail: "Permanently removing Flixate's private synchronization files.",
+    });
+    try {
+      const result = await service.deleteRemoteState({
+        authorize: true,
+        accessRequest: {
+          prompt: "",
+          loginHint: metadata.current.account.emailAddress ?? undefined,
+        },
+      });
+      authorization.invalidate();
+      const disconnected = clearSyncAccount(metadata.current);
+      metadata.current = disconnected;
+      await options.store.saveMetadata(disconnected);
+      setPendingAccount(null);
+      setStatus({
+        kind: "local",
+        label: "Drive history deleted",
+        detail: `${result.deletedFileCount} Drive ${result.deletedFileCount === 1 ? "file was" : "files were"} permanently deleted. This browser's seen history remains local.`,
+      });
+    } catch (error) {
+      setStatus(describeError(error));
+    } finally {
+      deletingRemoteData.current = false;
+    }
+  }, [authorization, googleReady, options.store, service]);
+
   const afterLocalChange = useCallback(() => {
-    if (!metadata.current.account || !authorization || !coordinator) return;
+    if (deletingRemoteData.current || !metadata.current.account || !authorization || !coordinator) return;
     if (authorization.currentGrant()) {
       void coordinator.flush().catch(() => {
         // performSync records the user-facing failure while the local change stays safe.
@@ -335,6 +376,7 @@ export function useDriveSync(options: UseDriveSyncOptions): DriveSyncController 
     cancelConnection,
     syncNow,
     disconnect,
+    deleteRemoteData,
     afterLocalChange,
   };
 }

@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useDriveSync } from "../src/hooks/use-drive-sync.js";
-import { saveDriveGrant } from "../src/sync/drive-session.js";
+import { loadDriveGrant, saveDriveGrant } from "../src/sync/drive-session.js";
 import type { SyncStateStore } from "../src/sync/sync-engine.js";
 import {
   DRIVE_APPDATA_SCOPE,
@@ -252,6 +252,52 @@ describe("Drive sync React integration", () => {
     expect(upload?.[1]?.body).toContain('"value":true');
     await waitFor(() => {
       expect(result.current.status.detail).toContain("Saved 1 seen title to Google Drive");
+    });
+    expect(requests).toEqual([]);
+  });
+
+  it("deletes the Drive copy, disconnects, and retains local seen history", async () => {
+    const requests: Array<{ prompt?: string; login_hint?: string }> = [];
+    installGoogle(requests);
+    installDriveFetch();
+    saveDriveGrant({
+      accessToken: "saved-token",
+      expiresAt: Date.now() + 3_600_000,
+      scope: DRIVE_APPDATA_SCOPE,
+    });
+    const store = new HookStore({
+      version: 1,
+      deviceId: DEVICE_A,
+      account: {
+        permissionId: "account-a",
+        emailAddress: "viewer@example.test",
+        displayName: "Viewer",
+        connectedAt: "2024-09-02T12:00:00.000Z",
+      },
+    });
+    store.state = applyBooleanChange(
+      emptySyncState(),
+      DEVICE_A,
+      "movie:1",
+      "seen",
+      true,
+      "2026-09-04T12:00:00.000Z",
+    );
+    const { result } = renderHook(() => useDriveSync({
+      clientId: "public-client-id",
+      store,
+      metadata: store.metadata,
+    }));
+    await waitFor(() => expect(result.current.status.kind).toBe("synced"));
+
+    await act(async () => { await result.current.deleteRemoteData(); });
+
+    expect(store.metadata.account).toBeNull();
+    expect(store.state.titles["movie:1"]?.seen?.value).toBe(true);
+    expect(loadDriveGrant()).toBeNull();
+    expect(result.current.status).toMatchObject({
+      kind: "local",
+      label: "Drive history deleted",
     });
     expect(requests).toEqual([]);
   });

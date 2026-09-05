@@ -21,6 +21,7 @@ export interface DriveStateTransport {
   getAccount(): Promise<SyncAccountIdentity>;
   listStateFiles(): Promise<DriveStateFile[]>;
   downloadStateFile(file: DriveStateFile): Promise<string>;
+  deleteStateFile(file: DriveStateFile): Promise<void>;
   writeOwnedStateFile(
     deviceId: string,
     existing: DriveStateFile | null,
@@ -155,6 +156,22 @@ export class GoogleDriveStateTransport implements DriveStateTransport {
     return this.requestText(
       `${DRIVE_API_URL}/files/${encodeURIComponent(file.id)}?alt=media`,
     );
+  }
+
+  async deleteStateFile(file: DriveStateFile): Promise<void> {
+    if (!deviceIdFromSyncFileName(file.name)) {
+      throw new Error("Refusing to delete a non-Flixate Drive document.");
+    }
+    try {
+      await this.requestText(
+        `${DRIVE_API_URL}/files/${encodeURIComponent(file.id)}`,
+        { method: "DELETE" },
+        false,
+      );
+    } catch (error) {
+      if (!(error instanceof DriveRequestError) || error.status !== 404) throw error;
+      // A repeated or concurrent deletion already achieved the requested result.
+    }
   }
 
   async writeOwnedStateFile(

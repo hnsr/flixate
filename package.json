@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "audit:production": "node --import tsx scripts/audit-production.ts",
     "preview": "vite preview",
     "phase0": "node --env-file-if-exists=.env --import tsx scripts/phase0.ts",
     "phase0:sample": "npm run phase0 -- --sample",

@@ -201,6 +201,31 @@ describe("production Drive transport", () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  it("permanently deletes only validated Flixate app-data files", async () => {
+    let deleteCalls = 0;
+    const fetcher = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      expect(String(input)).toBe(`https://www.googleapis.com/drive/v3/files/${DEVICE_A}`);
+      expect(init?.method).toBe("DELETE");
+      expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer token-a");
+      return ++deleteCalls === 1
+        ? new Response(null, { status: 204 })
+        : jsonResponse({ error: "already deleted" }, 404);
+    }) as unknown as typeof fetch;
+    const transport = new GoogleDriveStateTransport("token-a", { fetcher });
+
+    await expect(transport.deleteStateFile({
+      id: "not-state",
+      name: "notes.json",
+      modifiedTime: null,
+      size: null,
+    })).rejects.toThrow("non-Flixate");
+    expect(fetcher).not.toHaveBeenCalled();
+
+    await expect(transport.deleteStateFile(file(DEVICE_A))).resolves.toBeUndefined();
+    await expect(transport.deleteStateFile(file(DEVICE_A))).resolves.toBeUndefined();
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
   it("re-lists after an ambiguous create before retrying the write", async () => {
     const calls: string[] = [];
     const fetcher = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
@@ -393,6 +418,7 @@ describe("Drive sync engine", () => {
         if (candidate.id === "remote-file") return JSON.stringify(envelope(DEVICE_B, remote));
         return "{broken";
       },
+      deleteStateFile: vi.fn(),
       async writeOwnedStateFile(deviceId, existing, written) {
         events.push("write-drive");
         expect(deviceId).toBe(DEVICE_A);
@@ -429,6 +455,7 @@ describe("Drive sync engine", () => {
       getAccount: async () => ({ permissionId: "account-a", emailAddress: null, displayName: null }),
       listStateFiles: async () => [ownFile],
       downloadStateFile: async () => JSON.stringify(envelope(DEVICE_A, state)),
+      deleteStateFile: vi.fn(),
       writeOwnedStateFile: write,
     };
     const store = new MemorySyncStore(state, boundMetadata());
@@ -444,6 +471,7 @@ describe("Drive sync engine", () => {
       getAccount: async () => ({ permissionId: "account-b", emailAddress: null, displayName: null }),
       listStateFiles: list,
       downloadStateFile: vi.fn(),
+      deleteStateFile: vi.fn(),
       writeOwnedStateFile: vi.fn(),
     };
     const unbound = new MemorySyncStore(emptySyncState(), {
@@ -456,6 +484,8 @@ describe("Drive sync engine", () => {
 
     const mismatched = new MemorySyncStore(emptySyncState(), boundMetadata());
     await expect(new DriveSyncEngine(transport, mismatched).synchronize())
+      .rejects.toBeInstanceOf(SyncAccountMismatchError);
+    await expect(new DriveSyncEngine(transport, mismatched).deleteRemoteState())
       .rejects.toBeInstanceOf(SyncAccountMismatchError);
     expect(list).not.toHaveBeenCalled();
   });
@@ -478,6 +508,7 @@ describe("Drive sync engine", () => {
       getAccount: async () => ({ permissionId: "account-a", emailAddress: null, displayName: null }),
       listStateFiles: async () => [],
       downloadStateFile: vi.fn(),
+      deleteStateFile: vi.fn(),
       writeOwnedStateFile: async (_deviceId, _existing, value) => {
         written.push(value);
         return file(DEVICE_A);
@@ -498,6 +529,7 @@ describe("Drive sync engine", () => {
       getAccount: async () => ({ permissionId: "account-a", emailAddress: null, displayName: null }),
       listStateFiles: async () => [remoteFile],
       downloadStateFile: async () => JSON.stringify(envelope(DEVICE_B, remote)),
+      deleteStateFile: vi.fn(),
       writeOwnedStateFile: async (_deviceId, _existing, value) => {
         writes.push(value);
         return file(DEVICE_A);
@@ -511,6 +543,26 @@ describe("Drive sync engine", () => {
     expect(store.state.titles["movie:1"]).toBeUndefined();
     expect(store.state.titles["tv:2"]?.seen?.value).toBe(true);
     expect(writes[0]?.state).toEqual(store.state);
+  });
+
+  it("deletes every listed Flixate file without changing local state", async () => {
+    const local = applyBooleanChange(emptySyncState(), DEVICE_A, "movie:1", "seen", true, NOW);
+    const deleted: string[] = [];
+    const transport: DriveStateTransport = {
+      getAccount: async () => ({ permissionId: "account-a", emailAddress: null, displayName: null }),
+      listStateFiles: async () => [file(DEVICE_A), file(DEVICE_B)],
+      downloadStateFile: vi.fn(),
+      deleteStateFile: async (candidate) => { deleted.push(candidate.id); },
+      writeOwnedStateFile: vi.fn(),
+    };
+    const store = new MemorySyncStore(local, boundMetadata());
+
+    await expect(new DriveSyncEngine(transport, store).deleteRemoteState()).resolves.toEqual({
+      accountPermissionId: "account-a",
+      deletedFileCount: 2,
+    });
+    expect(deleted).toEqual([DEVICE_A, DEVICE_B]);
+    expect(store.state).toEqual(local);
   });
 });
 
@@ -588,6 +640,7 @@ describe("sync request coordination", () => {
         getAccount: async () => { throw new DriveRequestError("expired", 401, false); },
         listStateFiles: vi.fn(),
         downloadStateFile: vi.fn(),
+        deleteStateFile: vi.fn(),
         writeOwnedStateFile: vi.fn(),
       }),
     );
@@ -623,6 +676,7 @@ describe("sync request coordination", () => {
       }),
       listStateFiles: vi.fn(),
       downloadStateFile: vi.fn(),
+      deleteStateFile: vi.fn(),
       writeOwnedStateFile: vi.fn(),
     }));
 

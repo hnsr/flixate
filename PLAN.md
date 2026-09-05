@@ -551,8 +551,9 @@ gate and, if viable, its initial rollout.
 ### Phase 5 — cross-device sync (promoted; execute next)
 
 Status: in progress. S0 authorization feasibility, S1's deterministic state layer,
-and S2's production Drive adapter are complete. S3 account and sync UX is
-implemented, with deployed multi-device acceptance pending before S4. See
+S2's production Drive adapter, and S3 account/sync UX are complete. S4 production
+hardening is implemented, with real-device acceptance and Google Cloud audience
+confirmation pending. See
 [SYNC-PLAN.md](SYNC-PLAN.md) for the Google Drive `appDataFolder` design, merge
 model, account safety, delivery steps, and acceptance criteria. This track is being
 taken before Phase 4 without renumbering the existing roadmap.
