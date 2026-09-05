@@ -220,6 +220,7 @@ export function SyncControls(props: SyncControlsProps): React.JSX.Element {
               <>
                 <p className="sync-intro">
                   Keep seen history in your own hidden Google Drive app-data folder. Flixate has no server and cannot browse your normal Drive files.
+                  {" "}<a href={`${import.meta.env.BASE_URL}privacy.html`}>How Flixate uses Google data</a>
                 </p>
                 {props.controller.googleError && (
                   <p className="sync-google-error" role="alert">{props.controller.googleError}</p>

@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#11130f" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="description" content="How Flixate handles personal data and Google Drive access." />
+    <link rel="icon" href="./flixate.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./legal.css" />
+    <title>Privacy Policy — Flixate</title>
+  </head>
+  <body>
+    <div class="legal-shell">
+      <header class="legal-header">
+        <a class="brand" href="./" aria-label="Flixate home">
+          <img src="./flixate.svg" alt="" />
+          <span>flixate</span>
+        </a>
+        <a class="back-link" href="./">Back to the catalog</a>
+      </header>
+
+      <main class="legal-document">
+        <span class="eyebrow">The short version</span>
+        <h1>Privacy without surveillance.</h1>
+        <p class="lede">
+          Flixate is a personal, local-first watch finder. It has no advertising, analytics,
+          tracking pixels, behavioural profiling, or operator-controlled user database. Your
+          watch history stays in your browser unless you choose to sync it to your own private
+          Google Drive app-data folder.
+        </p>
+        <span class="effective-date">Effective 5 September 2026</span>
+
+        <section>
+          <h2>1. Who is responsible</h2>
+          <p>
+            Flixate is a small, non-commercial personal project maintained by the owner of the
+            <a href="https://github.com/hnsr/flixate">Flixate source repository</a>. There is no
+            company operating Flixate and no Flixate backend that receives user accounts or watch
+            history. Privacy questions can be sent to the maintainer through the contact details
+            on that repository. Do not put private information in a public GitHub issue.
+          </p>
+        </section>
+
+        <section>
+          <h2>2. Data Flixate uses</h2>
+          <h3>In your browser</h3>
+          <p>Flixate uses browser storage and caches for functionality. This can include:</p>
+          <ul>
+            <li>titles you mark as seen or add to a watchlist, together with change timestamps;</li>
+            <li>your filters, search preferences, and a randomly generated device identifier;</li>
+            <li>cached catalog data, synopses, posters, and app files for offline use; and</li>
+            <li>
+              if Drive sync is connected, your Google account identifier, email address or display
+              name, connection time, and a short-lived OAuth access token.
+            </li>
+          </ul>
+          <p>
+            This information is stored on your device. It is not sent to the Flixate maintainer.
+            The access token normally expires after about one hour and an expired token is removed
+            when Flixate next checks it.
+          </p>
+
+          <h3>In your Google Drive, if you opt in</h3>
+          <p>
+            Drive sync stores only Flixate state documents: title identifiers, seen or watchlist
+            status, change timestamps, a device identifier, and document metadata. These documents
+            live in Google Drive's hidden app-data folder and are not publicly shared. They remain
+            under your Google account's control.
+          </p>
+        </section>
+
+        <section>
+          <h2>3. How Google user data is used</h2>
+          <p>
+            Connecting Google Drive is optional and begins only when you choose it. Flixate requests
+            the narrow <code>drive.appdata</code> permission. It uses this permission solely to create,
+            find, read, update, merge, and delete Flixate's own synchronization files in the hidden
+            app-data folder. It cannot browse or access your normal Drive files.
+          </p>
+          <p>
+            Flixate also reads the connected account's identifier, email address, and display name
+            directly from Google so it can show which account is connected and avoid silently syncing
+            with the wrong account. This information remains in your browser. Google data is not used
+            for advertising, profiling, credit decisions, or any unrelated purpose; it is not sold,
+            shared with data brokers, or transferred to another application.
+          </p>
+          <p>
+            Flixate's use and transfer of information received from Google APIs adheres to the
+            <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>,
+            including its Limited Use requirements.
+          </p>
+        </section>
+
+        <section>
+          <h2>4. Services your browser contacts</h2>
+          <p>Using Flixate can cause your browser to communicate directly with:</p>
+          <ul>
+            <li><strong>GitHub Pages</strong>, which hosts the app and its catalog files;</li>
+            <li><strong>TMDB</strong>, which supplies poster images and entertainment metadata; and</li>
+            <li>
+              <strong>Google</strong>, whose identity script loads to prepare the optional Drive
+              connection and whose APIs are contacted if you use it.
+            </li>
+          </ul>
+          <p>
+            Those providers may receive ordinary technical request data such as your IP address,
+            browser information, and request time, and handle it under their own privacy terms. Their
+            processing and infrastructure may involve countries outside the European Economic Area.
+            Flixate does not add tracking identifiers to these requests.
+          </p>
+        </section>
+
+        <section>
+          <h2>5. No tracking, advertising, or automated decisions</h2>
+          <p>
+            Flixate does not use analytics, advertising cookies, tracking pixels, fingerprinting,
+            cross-site tracking, or marketing profiles. Browser storage, the offline service worker,
+            and the Google OAuth flow are used only to make requested features work. Flixate does not
+            make legal or similarly significant automated decisions about you.
+          </p>
+        </section>
+
+        <section>
+          <h2>6. Legal basis and EU data-protection principles</h2>
+          <p>
+            To the extent that the project maintainer is considered a controller under the GDPR,
+            processing is limited to what is necessary to provide the functionality you request.
+            Optional Google Drive access is initiated with your affirmative authorization and can be
+            disconnected or revoked at any time. Flixate is designed around data minimisation, purpose
+            limitation, transparency, and privacy by default.
+          </p>
+        </section>
+
+        <section>
+          <h2>7. Retention, control, and deletion</h2>
+          <ul>
+            <li>Clear this site's browser data to remove Flixate's local data from that browser.</li>
+            <li>Use <strong>Export</strong> to obtain your watch history in a machine-readable file.</li>
+            <li>Use <strong>Disconnect</strong> to remove the saved Drive connection from the browser.</li>
+            <li>
+              Use <strong>Delete Drive history</strong> to delete Flixate sync documents from the
+              connected account. Other connected devices can upload their retained local copy again.
+            </li>
+            <li>You can also revoke Flixate's access in your Google Account permissions.</li>
+          </ul>
+          <p>
+            Local data remains until you clear or replace it. Drive sync data remains until you delete
+            it. Because the maintainer does not receive a copy, the maintainer generally has no remote
+            personal-data record to retrieve, correct, or erase for you.
+          </p>
+        </section>
+
+        <section>
+          <h2>8. Your EU rights</h2>
+          <p>
+            Where the GDPR applies, you may have rights to information, access, correction, erasure,
+            restriction, portability, objection, and withdrawal of consent. The local export and
+            deletion controls above let you exercise many of these rights directly. You may contact
+            the maintainer with a privacy question or request, and you may complain to your national
+            data-protection authority. The
+            <a href="https://commission.europa.eu/law/law-topic/data-protection/information-individuals_en">European Commission explains these rights</a>
+            in more detail.
+          </p>
+        </section>
+
+        <section>
+          <h2>9. Security and changes</h2>
+          <p>
+            Flixate limits Google access to the smallest practical scope and does not operate a central
+            user database. No software can promise absolute security, so keep control of your device and
+            Google account. This policy may be updated if Flixate's data practices change; the effective
+            date above will be revised for material changes.
+          </p>
+        </section>
+      </main>
+
+      <footer class="legal-footer">
+        <a href="./">Flixate</a>
+        <a href="./terms.html">Terms of Service</a>
+      </footer>
+    </div>
+  </body>
+</html>

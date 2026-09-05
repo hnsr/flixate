@@ -853,6 +853,27 @@ footer p {
   margin: 5px 0;
 }
 
+.legal-links {
+  display: flex;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.legal-links a,
+.sync-intro a {
+  color: var(--accent);
+  text-underline-offset: 3px;
+}
+
+.legal-links a {
+  text-decoration: none;
+}
+
+.legal-links a:hover,
+.sync-intro a:hover {
+  color: var(--text);
+}
+
 .credits a {
   display: inline-block;
   margin-top: 8px;

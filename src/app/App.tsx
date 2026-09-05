@@ -382,6 +382,10 @@ export function App(): React.JSX.Element {
         <div>
           <strong>Flixate</strong>
           <p>A personal, local-first watch finder. Optional sync stores seen history in your own private Google Drive app data.</p>
+          <nav className="legal-links" aria-label="Legal information">
+            <a href={`${import.meta.env.BASE_URL}privacy.html`}>Privacy</a>
+            <a href={`${import.meta.env.BASE_URL}terms.html`}>Terms</a>
+          </nav>
         </div>
         <div className="credits">
           <img className="tmdb-logo" src={`${import.meta.env.BASE_URL}tmdb.svg`} alt="The Movie Database (TMDB)" />
