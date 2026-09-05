@@ -546,6 +546,13 @@ Status: ready to start; scope revised on 2026-09-05. The promoted cross-device s
 track has completed its personal version-1 rollout.
 
 - Add release/first-air year filtering with optional lower and upper bounds.
+- Limit the catalog discovery shortlist to 100 titles, including on initial load.
+  Apply search, filters, and the selected sort to the full catalog before taking
+  the first 100 matches, so every title remains discoverable. Show the displayed
+  count separately from the total matches (for example, "Showing 100 of 12,430
+  matches"). Refill the shortlist from the remaining matches when a seen action
+  hides a title. This is a display limit, not a smaller catalog or a limit on saved
+  watchlist membership.
 - Add multiple named personal watchlists: create, rename, and delete lists; add or
   remove a title from one or more lists; and browse an individual list. List
   membership is independent of seen state, and deleting a list must not erase seen
@@ -557,14 +564,14 @@ track has completed its personal version-1 rollout.
   not sufficient for multiple lists. See [SYNC-PLAN.md](SYNC-PLAN.md).
 - Add filter presets; the exact preset interaction remains to be specified.
 - Improve the responsive/mobile layout where needed.
-- Tune parse/query performance from real catalog measurements and shard only if
-  necessary.
 - Fill any remaining gaps in snapshot-age and coverage indicators; the update date,
   stale-catalog warning, and US+NL label already exist.
 
 Other filter refinements and a dedicated accessibility/keyboard improvement pass
-are removed from Phase 4's scope. Multiple watchlists are personal to each Google
-account; collaborative lists across different accounts remain a later feature.
+are removed from Phase 4's scope. Performance tuning and further sharding are
+postponed because current performance is satisfactory; revisit them if normal use
+reveals a slowdown. Multiple watchlists are personal to each Google account;
+collaborative lists across different accounts remain a later feature.
 
 ### Phase 5 — cross-device sync (promoted)
 
