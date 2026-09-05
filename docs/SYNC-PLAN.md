@@ -134,15 +134,14 @@ Watchlists should extend the per-title record rather than introduce an unrelated
 sync system. Each independently mutable field needs its own value and change stamp,
 so a recent watchlist edit cannot accidentally overwrite a newer seen edit.
 
-Phase 4 now requires multiple named watchlists. It will extend the completed S1–S4
-implementation with stable list identifiers, list metadata, and independently
-mergeable membership for each title/list pair. Rename, deletion, and membership
-changes need deterministic conflict handling, including protection against deleted
-lists or removed memberships reappearing from an older device. Seen state remains
-independent. Versioned local, Drive, and backup formats need migration and explicit
-older-client handling before rollout. Lists remain private to one Google account;
-this does not introduce cross-account sharing or reopen the completed seen-sync
-rollout.
+Phase 4 has extended the completed S1–S4 implementation with stable list UUIDs,
+timestamped names, and independently mergeable membership for each title/list pair.
+Removed memberships retain false tombstones; list deletion is permanent for that
+UUID and wins against subsequent stale-device edits. Seen state remains independent.
+Local storage and Drive filenames are isolated from older clients; version-2
+envelopes and backups include lists while readers retain version-1 compatibility.
+See [PHASE-4.md](PHASE-4.md) for migration details and tests. Lists remain private
+to one Google account; this does not introduce cross-account sharing.
 
 S1 currently uses this logical shape (shown with abbreviated device IDs). Its
 reserved `watchlisted` boolean is not yet a multiple-watchlist implementation:
@@ -180,9 +179,9 @@ file and never overwrites another device's file:
 
 ```text
 appDataFolder/
-  flixate-state-<device-a>.json
-  flixate-state-<device-b>.json
-  flixate-state-<device-c>.json
+  flixate-state-v2-<device-a>.json
+  flixate-state-v2-<device-b>.json
+  flixate-state-<device-c>.json       # legacy, read but not overwritten by new apps
 ```
 
 Each document includes a recognizable format marker, schema version, device ID,

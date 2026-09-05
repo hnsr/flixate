@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  createBackup,
+  createPersonalBackup,
   normalizeFilterSettings,
   parseBackup,
   previewImport,
@@ -14,7 +14,6 @@ import {
   migrateUserState,
   seenTitleKeys,
   USER_STATE_KEY,
-  type UserStateV1,
 } from "../domain/user-state.js";
 import { useCatalog } from "../hooks/use-catalog.js";
 import { useDriveSync } from "../hooks/use-drive-sync.js";
@@ -29,6 +28,7 @@ import {
 } from "../sync/sync-metadata.js";
 import {
   LOCAL_SYNC_STATE_KEY,
+  LEGACY_SYNC_STATE_KEY,
   loadOrMigrateLocalSyncState,
   parseLocalSyncState,
   saveLocalSyncState,
@@ -36,6 +36,8 @@ import {
 } from "../sync/sync-local-state.js";
 import {
   applyBooleanChange,
+  activeWatchlists,
+  changeWatchlist,
   mergeSyncStates,
   migrateUserStateToSync,
   syncStateToUserState,
@@ -46,6 +48,8 @@ import { FiltersPanel } from "./FiltersPanel.js";
 import { ImportDialog } from "./ImportDialog.js";
 import { SearchBar } from "./SearchBar.js";
 import { SyncControls } from "./SyncControls.js";
+import { WatchlistControls } from "./WatchlistControls.js";
+import { FilterPresets } from "./FilterPresets.js";
 
 const SETTINGS_KEY = "flixate:filters:v1";
 const REFRESH_WORKFLOW_URL = "https://github.com/hnsr/flixate/actions/workflows/catalog.yml";
@@ -58,8 +62,8 @@ type PendingImport = {
   preview: ImportPreview;
 };
 
-function downloadBackup(state: UserStateV1, settings: FilterSettings): void {
-  const backup = createBackup(state, settings);
+function downloadBackup(state: SyncStateV1, settings: FilterSettings): void {
+  const backup = createPersonalBackup(state, settings);
   const blob = new Blob([`${JSON.stringify(backup, null, 2)}\n`], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -108,6 +112,8 @@ export function App(): React.JSX.Element {
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [syncPanelOpen, setSyncPanelOpen] = useState(false);
+  const [selectedList, setSelectedList] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const commitSyncState = useCallback((next: SyncStateV1) => {
     syncStateRef.current = next;
@@ -148,7 +154,7 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (!event.newValue) return;
-      if (event.key === LOCAL_SYNC_STATE_KEY) {
+      if (event.key === LOCAL_SYNC_STATE_KEY || event.key === LEGACY_SYNC_STATE_KEY) {
         try {
           const incoming = parseLocalSyncState(event.newValue, syncMetadataRef.current.deviceId);
           const merged = mergeSyncStates(syncStateRef.current, incoming);
@@ -203,6 +209,33 @@ export function App(): React.JSX.Element {
     () => catalogIndex ? filterCatalogIndex(catalogIndex, filters, seenKeys) : [],
     [catalogIndex, filters, seenKeys],
   );
+  const watchlists = useMemo(() => activeWatchlists(syncState), [syncState]);
+  const activeList = watchlists.find(({ id }) => id === selectedList);
+  useEffect(() => {
+    if (selectedList && !activeList) setSelectedList(null);
+  }, [selectedList, activeList]);
+  const matchingTitles = useMemo(() => activeList
+    ? titles.filter(title => activeList.list.members[title.key]?.value)
+    : titles, [titles, activeList]);
+  const displayedTitles = useMemo(() => activeList ? matchingTitles : matchingTitles.slice(0, 100),
+    [activeList, matchingTitles]);
+  const catalogKeys = useMemo(() => new Set(catalog?.titles.map(title => title.key)), [catalog]);
+  const unavailableMembers = activeList
+    ? Object.entries(activeList.list.members).filter(([key, field]) => field?.value && !catalogKeys.has(key as TitleKey))
+    : [];
+
+  const selectList = (id: string | null) => {
+    setSelectedList(id);
+    setFilters({ ...DEFAULT_FILTERS, sort: filters.sort, seen: id ? "all" : "hide" });
+  };
+  const editList = (id: string, action: Parameters<typeof changeWatchlist>[3]) => {
+    try {
+      commitSyncState(changeWatchlist(syncStateRef.current, syncMetadataRef.current.deviceId, id, action));
+      driveSync.afterLocalChange();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "The watchlist could not be updated.");
+    }
+  };
 
   const handleImport = async (file: File | undefined) => {
     if (!file) return;
@@ -218,7 +251,7 @@ export function App(): React.JSX.Element {
 
   const applyImport = () => {
     if (!pendingImport) return;
-    const imported = migrateUserStateToSync(
+    const imported = pendingImport.backup.personalState ?? migrateUserStateToSync(
       pendingImport.backup.state,
       syncMetadataRef.current.deviceId,
     );
@@ -260,8 +293,8 @@ export function App(): React.JSX.Element {
     [setFilters],
   );
   const exportCurrent = useCallback(() => {
-    downloadBackup(userState, { ...filters, query: searchDraft.current });
-  }, [filters, userState]);
+    downloadBackup(syncStateRef.current, { ...filters, query: searchDraft.current });
+  }, [filters]);
 
   if (catalogState.status === "loading") return <LoadingState />;
   if (catalogState.status === "error") {
@@ -342,6 +375,12 @@ export function App(): React.JSX.Element {
           </div>
         </section>
 
+        <WatchlistControls
+          lists={watchlists} selected={activeList?.id ?? null} onSelect={selectList}
+          onCreate={(name) => editList(crypto.randomUUID(), { name })}
+          onRename={(id, name) => editList(id, { name })}
+          onDelete={(id) => editList(id, { delete: true })}
+        />
         <SearchBar
           query={filters.query}
           sort={filters.sort}
@@ -350,8 +389,15 @@ export function App(): React.JSX.Element {
           onSortChange={updateSort}
         />
 
+        <FilterPresets getSettings={() => ({ ...filters, query: searchDraft.current })} onApply={setFilters} />
+        <button type="button" className="secondary-button mobile-filter-toggle"
+          aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)}>
+          {filtersOpen ? "Hide filters" : "Show filters"}
+        </button>
         <div className="catalog-layout">
-          <FiltersPanel settings={filters} genres={genres} onChange={setFilters} />
+          <div className={filtersOpen ? "filter-container is-open" : "filter-container"}>
+            <FiltersPanel settings={filters} genres={genres} onChange={setFilters} />
+          </div>
           <section className="results-panel" aria-labelledby="results-heading">
             {freshnessWarning && (
               <p className="catalog-warning" role="status">
@@ -363,17 +409,37 @@ export function App(): React.JSX.Element {
             )}
             <div className="results-heading">
               <div>
-                <span className="eyebrow">The shortlist</span>
-                <h2 id="results-heading">{titles.length} {titles.length === 1 ? "title" : "titles"}</h2>
+                <span className="eyebrow">{activeList ? activeList.list.name.value : "The shortlist"}</span>
+                <h2 id="results-heading">{displayedTitles.length} {displayedTitles.length === 1 ? "title" : "titles"}</h2>
+                <p className="match-count">Showing {displayedTitles.length.toLocaleString("en-US")} of {matchingTitles.length.toLocaleString("en-US")} matches</p>
               </div>
               <p>Updated {refreshed} <span aria-hidden="true">·</span> TMDB scores</p>
             </div>
             <CatalogList
+              key={activeList?.id ?? "discover"}
               catalog={catalogState.catalog}
-              titles={titles}
+              titles={displayedTitles}
               seenKeys={seenKeys}
               onToggleSeen={toggleTitle}
+              watchlists={watchlists}
+              onMembershipChange={(id, key, member) => editList(id, { key, member })}
             />
+            {unavailableMembers.length > 0 && (
+              <details className="unavailable-members">
+                <summary>{unavailableMembers.length} saved titles outside the current catalog</summary>
+                <p>These titles stay in your list even if they no longer appear in the US + NL catalog.</p>
+                {unavailableMembers.map(([key]) => (
+                  <div key={key}>
+                    <a href={`https://www.themoviedb.org/${key.replace(":", "/")}`} target="_blank" rel="noreferrer">
+                      {key.startsWith("tv:") ? "Series" : "Movie"} {key.split(":")[1]} ↗
+                    </a>
+                    <button className="text-button" onClick={() => editList(activeList!.id, { key: key as TitleKey, member: false })}>
+                      Remove from list
+                    </button>
+                  </div>
+                ))}
+              </details>
+            )}
           </section>
         </div>
       </main>
@@ -381,7 +447,9 @@ export function App(): React.JSX.Element {
       <footer id="credits">
         <div>
           <strong>Flixate</strong>
-          <p>A personal, local-first watch finder. Optional sync stores seen history in your own private Google Drive app data.</p>
+          <p>A personal, local-first watch finder. Optional sync stores seen history and watchlists in your own private Google Drive app data.</p>
+          <p>Coverage includes subscription, free, and ad-supported streaming in the US or Netherlands.
+            Rental/purchase-only titles are excluded. Availability can change, and a series may qualify with only some seasons available.</p>
           <nav className="legal-links" aria-label="Legal information">
             <a href={`${import.meta.env.BASE_URL}privacy.html`}>Privacy</a>
             <a href={`${import.meta.env.BASE_URL}terms.html`}>Terms</a>

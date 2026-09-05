@@ -47,6 +47,8 @@ export type FilterSettings = {
   minimumRating: number | null;
   maximumRating: number | null;
   minimumVotes: number;
+  minimumYear: number | null;
+  maximumYear: number | null;
   genres: string[];
   genreMode: GenreMode;
   sort: SortMode;
@@ -59,6 +61,8 @@ export const DEFAULT_FILTERS: FilterSettings = {
   minimumRating: null,
   maximumRating: null,
   minimumVotes: 0,
+  minimumYear: null,
+  maximumYear: null,
   genres: [],
   genreMode: "any",
   sort: "rating",

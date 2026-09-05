@@ -81,7 +81,8 @@ function responseFile(value: DriveFileResponse): DriveStateFile {
 
 export function deviceIdFromSyncFileName(name: string): string | null {
   if (!name.startsWith(STATE_FILE_PREFIX) || !name.endsWith(".json")) return null;
-  const deviceId = name.slice(STATE_FILE_PREFIX.length, -".json".length);
+  const suffix = name.slice(STATE_FILE_PREFIX.length, -".json".length);
+  const deviceId = suffix.startsWith("v2-") ? suffix.slice(3) : suffix;
   return isDeviceId(deviceId) ? deviceId : null;
 }
 

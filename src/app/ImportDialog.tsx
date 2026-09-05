@@ -1,4 +1,5 @@
 import type { FlixateBackup, ImportPreview } from "../domain/backup.js";
+import { activeWatchlists } from "../sync/sync-state.js";
 
 type ImportDialogProps = {
   backup: FlixateBackup;
@@ -28,6 +29,10 @@ export function ImportDialog(props: ImportDialogProps): React.JSX.Element {
           <div><dt>Older or unchanged</dt><dd>{props.preview.unchangedOrOlder}</dd></div>
           <div><dt>Seen after merge</dt><dd>{props.preview.seenAfterMerge}</dd></div>
         </dl>
+        {props.backup.personalState && (
+          <p>{activeWatchlists(props.backup.personalState).length} watchlists in this backup.
+            List changes and removals will also be merged; deleted lists stay deleted.</p>
+        )}
         <p className="backup-date">Exported {props.backup.exportedAt === "unknown" ? "at an unknown time" : new Date(props.backup.exportedAt).toLocaleString()}</p>
         <div className="dialog-actions">
           <button type="button" className="secondary-button" onClick={props.onCancel}>Cancel</button>

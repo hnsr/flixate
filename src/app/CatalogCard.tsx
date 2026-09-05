@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { SynopsisRepository } from "../data/catalog.js";
+import type { WatchlistOption } from "./WatchlistControls.js";
 import {
   genresForTitle,
   posterUrl,
@@ -15,6 +16,8 @@ type CatalogCardProps = {
   synopsisRepository: SynopsisRepository;
   onToggleSeen: () => void;
   onSizeChange?: () => void;
+  watchlists?: WatchlistOption[];
+  onMembershipChange?: (listId: string, member: boolean) => void;
 };
 
 type SynopsisState =
@@ -28,6 +31,7 @@ function formatVotes(votes: number): string {
 
 export function CatalogCard(props: CatalogCardProps): React.JSX.Element {
   const [expanded, setExpanded] = useState(false);
+  const [listsOpen, setListsOpen] = useState(false);
   const [posterFailed, setPosterFailed] = useState(false);
   const [synopsis, setSynopsis] = useState<SynopsisState>({ status: "idle" });
   const imageUrl = posterUrl(props.catalog, props.title);
@@ -35,7 +39,7 @@ export function CatalogCard(props: CatalogCardProps): React.JSX.Element {
 
   useEffect(() => {
     props.onSizeChange?.();
-  }, [expanded, synopsis, props.onSizeChange]);
+  }, [expanded, listsOpen, synopsis, props.watchlists, props.onSizeChange]);
 
   const toggleDetails = () => {
     const next = !expanded;
@@ -105,6 +109,10 @@ export function CatalogCard(props: CatalogCardProps): React.JSX.Element {
           <a href={tmdbUrl(props.title)} target="_blank" rel="noreferrer" className="tmdb-link">
             TMDB <span aria-hidden="true">↗</span>
           </a>
+          <button type="button" className="secondary-button" aria-expanded={listsOpen}
+            aria-label={`Watchlists for ${props.title.title}`} onClick={() => setListsOpen(!listsOpen)}>
+            Lists{props.watchlists?.some(({ list }) => list.members[props.title.key]?.value) ? " ✓" : ""}
+          </button>
           <button
             type="button"
             className={props.seen ? "seen-button is-seen" : "seen-button"}
@@ -115,6 +123,19 @@ export function CatalogCard(props: CatalogCardProps): React.JSX.Element {
             {props.seen ? "Seen" : "Mark seen"}
           </button>
         </div>
+        {listsOpen && (
+          <fieldset className="card-watchlists">
+            <legend>Add to watchlists</legend>
+            {!props.watchlists?.length && <p>Create a watchlist using “Manage watchlists” above the catalog.</p>}
+            {props.watchlists?.map(({ id, list }) => (
+              <label key={id}>
+                <input type="checkbox" checked={list.members[props.title.key]?.value ?? false}
+                  onChange={event => props.onMembershipChange?.(id, event.target.checked)} />
+                {list.name.value}
+              </label>
+            ))}
+          </fieldset>
+        )}
       </div>
     </article>
   );

@@ -25,6 +25,7 @@ import { SyncAccountMismatchError, type SyncMetadataV1 } from "../src/sync/sync-
 import { SyncCoordinator } from "../src/sync/sync-coordinator.js";
 import {
   applyBooleanChange,
+  changeWatchlist,
   createSyncEnvelope,
   emptySyncState,
   syncFileName,
@@ -319,8 +320,17 @@ describe("production Drive transport", () => {
     }) as unknown as typeof fetch;
 
     const browserA = new MemorySyncStore(emptySyncState(), boundMetadata(DEVICE_A));
+    const legacy = envelope(DEVICE_A, applyBooleanChange(emptySyncState(), DEVICE_A, "movie:9", "seen", true, NOW));
+    legacy.version = 1;
+    files.set("legacy", {
+      id: "legacy", name: `flixate-state-${DEVICE_A}.json`,
+      modifiedTime: NOW, size: 100, content: JSON.stringify(legacy),
+    });
     const transportA = new GoogleDriveStateTransport("token-a", { fetcher });
     await new DriveSyncEngine(transportA, browserA, () => NOW).synchronize();
+    expect(browserA.state.titles["movie:9"]?.seen?.value).toBe(true);
+    browserA.state = changeWatchlist(browserA.state, DEVICE_A, DEVICE_C, { name: "Friday" }, NOW);
+    browserA.state = changeWatchlist(browserA.state, DEVICE_A, DEVICE_C, { key: "movie:1", member: true }, NOW);
 
     browserA.state = applyBooleanChange(
       browserA.state,
@@ -343,8 +353,14 @@ describe("production Drive transport", () => {
       () => "2024-09-02T12:03:00.000Z",
     ).synchronize();
 
-    expect(files).toHaveLength(2);
+    expect(files).toHaveLength(3);
     expect(browserB.state.titles["movie:1"]?.seen?.value).toBe(true);
+    expect(browserB.state.lists?.[DEVICE_C]?.members["movie:1"]?.value).toBe(true);
+    expect(files.get("legacy")?.content).toBe(JSON.stringify(legacy));
+    browserB.state = changeWatchlist(browserB.state, DEVICE_B, DEVICE_C, { key: "movie:1", member: false }, "2024-09-02T12:04:00.000Z");
+    await new DriveSyncEngine(new GoogleDriveStateTransport("token-b", { fetcher }), browserB, () => "2024-09-02T12:05:00.000Z").synchronize();
+    await new DriveSyncEngine(transportA, browserA, () => "2024-09-02T12:06:00.000Z").synchronize();
+    expect(browserA.state.lists?.[DEVICE_C]?.members["movie:1"]?.value).toBe(false);
   });
 });
 

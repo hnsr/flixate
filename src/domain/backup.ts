@@ -1,12 +1,14 @@
 import { DEFAULT_FILTERS, type FilterSettings } from "./catalog.js";
 import { migrateUserState, type UserStateV1 } from "./user-state.js";
+import { createSyncEnvelope, parseSyncEnvelope, syncStateToUserState, type SyncStateV1 } from "../sync/sync-state.js";
 
 export type FlixateBackup = {
   format: "flixate-backup";
-  version: 1;
+  version: 1 | 2;
   exportedAt: string;
   state: UserStateV1;
   settings: FilterSettings;
+  personalState?: SyncStateV1;
 };
 
 export type ImportPreview = {
@@ -21,6 +23,18 @@ export function createBackup(
   now = new Date().toISOString(),
 ): FlixateBackup {
   return { format: "flixate-backup", version: 1, exportedAt: now, state, settings };
+}
+
+// Export only validated personal state, never account bindings, grants, or device session metadata.
+export function createPersonalBackup(
+  state: SyncStateV1, settings: FilterSettings, now = new Date().toISOString(),
+): FlixateBackup {
+  const envelope = createSyncEnvelope("00000000-0000-4000-8000-000000000000", state, now);
+  const personalState = parseSyncEnvelope(envelope).state;
+  return {
+    format: "flixate-backup", version: 2, exportedAt: envelope.writtenAt,
+    state: syncStateToUserState(personalState), personalState, settings,
+  };
 }
 
 export function normalizeFilterSettings(value: unknown): FilterSettings {
@@ -46,12 +60,19 @@ export function normalizeFilterSettings(value: unknown): FilterSettings {
     minimumRating: typeof candidate.minimumRating === "number" ? candidate.minimumRating : null,
     maximumRating: typeof candidate.maximumRating === "number" ? candidate.maximumRating : null,
     minimumVotes: typeof candidate.minimumVotes === "number" ? candidate.minimumVotes : 0,
+    minimumYear: validYear(candidate.minimumYear),
+    maximumYear: validYear(candidate.maximumYear),
     genres: Array.isArray(candidate.genres)
       ? candidate.genres.filter((genre): genre is string => typeof genre === "string")
       : [],
     genreMode,
     sort,
   };
+}
+
+function validYear(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1800 && value <= 9999
+    ? value : null;
 }
 
 export function parseBackup(text: string): FlixateBackup {
@@ -63,14 +84,24 @@ export function parseBackup(text: string): FlixateBackup {
   }
   if (!value || typeof value !== "object") throw new Error("That is not a Flixate backup.");
   const candidate = value as Partial<FlixateBackup>;
-  if (candidate.format !== "flixate-backup" || candidate.version !== 1 || !candidate.state) {
+  if (candidate.format !== "flixate-backup" || (candidate.version !== 1 && candidate.version !== 2) || !candidate.state) {
     throw new Error("That is not a supported Flixate backup.");
+  }
+  let personalState: SyncStateV1 | undefined;
+  if (candidate.version === 2) {
+    if (!candidate.personalState) throw new Error("The backup is missing its personal state.");
+    personalState = parseSyncEnvelope({
+      format: "flixate-state", version: 2,
+      deviceId: "00000000-0000-4000-8000-000000000000",
+      writtenAt: candidate.exportedAt, state: candidate.personalState,
+    }).state;
   }
   return {
     format: "flixate-backup",
-    version: 1,
+    version: candidate.version,
     exportedAt: typeof candidate.exportedAt === "string" ? candidate.exportedAt : "unknown",
-    state: migrateUserState(candidate.state),
+    state: personalState ? syncStateToUserState(personalState) : migrateUserState(candidate.state),
+    ...(personalState ? { personalState } : {}),
     settings: normalizeFilterSettings(candidate.settings),
   };
 }

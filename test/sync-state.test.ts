@@ -276,7 +276,7 @@ describe("hybrid clock and sync envelopes", () => {
     expect(
       parseSyncEnvelope(JSON.stringify(envelope), { nowMs: Date.parse("2026-09-02T12:02:00.000Z") }),
     ).toEqual(envelope);
-    expect(syncFileName(DEVICE_A)).toBe(`flixate-state-${DEVICE_A}.json`);
+    expect(syncFileName(DEVICE_A)).toBe(`flixate-state-v2-${DEVICE_A}.json`);
   });
 
   it("rejects corrupt, future-version, and far-future documents", () => {
@@ -285,7 +285,7 @@ describe("hybrid clock and sync envelopes", () => {
     );
     expect(() =>
       parseSyncEnvelope(
-        { format: "flixate-state", version: 2, deviceId: DEVICE_A },
+        { format: "flixate-state", version: 3, deviceId: DEVICE_A },
         { nowMs: Date.parse(NOON) },
       ),
     ).toThrow("unsupported");

@@ -85,6 +85,8 @@ export function filterCatalogIndex(
     if (settings.minimumRating !== null && (title.rating ?? -1) < settings.minimumRating) continue;
     if (settings.maximumRating !== null && (title.rating ?? 11) > settings.maximumRating) continue;
     if (title.voteCount < settings.minimumVotes) continue;
+    if (settings.minimumYear != null && (title.releaseYear ?? -1) < settings.minimumYear) continue;
+    if (settings.maximumYear != null && (title.releaseYear ?? Infinity) > settings.maximumYear) continue;
 
     if (settings.genres.length > 0) {
       const genres = genresForTitle(title);

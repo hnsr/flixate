@@ -24,11 +24,18 @@ export type SyncTitleStateV1 = {
 export type SyncStateV1 = {
   version: 1;
   titles: Partial<Record<TitleKey, SyncTitleStateV1>>;
+  lists?: Record<string, SyncWatchlist>;
+};
+
+export type SyncWatchlist = {
+  name: { value: string; changedAt: HybridTimestampV1 };
+  deleted?: SyncBooleanFieldV1;
+  members: Partial<Record<TitleKey, SyncBooleanFieldV1>>;
 };
 
 export type SyncEnvelopeV1 = {
   format: typeof SYNC_DOCUMENT_FORMAT;
-  version: 1;
+  version: 1 | 2;
   deviceId: string;
   writtenAt: string;
   state: SyncStateV1;
@@ -129,7 +136,31 @@ function validateSyncState(
         : { watchlisted: validateBooleanField(title.watchlisted, nowMs, maxFutureSkewMs) }),
     };
   }
-  return { version: 1, titles };
+  const lists: Record<string, SyncWatchlist> = {};
+  if (candidate.lists !== undefined) {
+    if (!candidate.lists || typeof candidate.lists !== "object" || Array.isArray(candidate.lists)) {
+      throw new Error("Watchlists are malformed.");
+    }
+    for (const [id, list] of Object.entries(candidate.lists)) {
+      if (!isDeviceId(id) || !list || typeof list !== "object"
+        || !list.name || typeof list.name.value !== "string"
+        || !list.name.value.trim() || list.name.value.length > 80
+        || !list.members || typeof list.members !== "object" || Array.isArray(list.members)) {
+        throw new Error("A watchlist is malformed.");
+      }
+      const members: SyncWatchlist["members"] = {};
+      for (const [key, field] of Object.entries(list.members)) {
+        if (!isTitleKey(key)) throw new Error("A watchlist contains an invalid title.");
+        members[key] = validateBooleanField(field, nowMs, maxFutureSkewMs);
+      }
+      lists[id] = {
+        name: { value: list.name.value, changedAt: validateHybridTimestamp(list.name.changedAt, nowMs, maxFutureSkewMs) },
+        ...(list.deleted === undefined ? {} : { deleted: validateBooleanField(list.deleted, nowMs, maxFutureSkewMs) }),
+        members,
+      };
+    }
+  }
+  return { version: 1, titles, ...(Object.keys(lists).length ? { lists } : {}) };
 }
 
 export function compareHybridTimestamps(a: HybridTimestampV1, b: HybridTimestampV1): number {
@@ -174,7 +205,36 @@ export function mergeSyncStates(...states: readonly SyncStateV1[]): SyncStateV1 
       };
     }
   }
-  return { version: 1, titles };
+  const lists: Record<string, SyncWatchlist> = {};
+  for (const id of [...new Set(states.flatMap(state => Object.keys(state.lists ?? {})))].sort()) {
+    let merged: SyncWatchlist | undefined;
+    for (const state of states) {
+      const incoming = state.lists?.[id];
+      if (!incoming) continue;
+      if (!merged) { merged = { ...incoming, members: { ...incoming.members } }; continue; }
+      const nameOrder = compareHybridTimestamps(merged.name.changedAt, incoming.name.changedAt);
+      if (nameOrder < 0 || (nameOrder === 0 && incoming.name.value > merged.name.value)) {
+        merged.name = incoming.name;
+      }
+      // A list ID is never reused or restored: deletion wins over any stale rename/edit.
+      const deleted = [merged.deleted, incoming.deleted].filter(field => field?.value);
+      merged.deleted = deleted.length
+        ? deleted.reduce((a, b) => winningField(a, b))
+        : winningField(merged.deleted, incoming.deleted);
+      for (const [key, field] of Object.entries(incoming.members)) {
+        const titleKey = key as TitleKey;
+        merged.members[titleKey] = winningField(merged.members[titleKey], field);
+      }
+    }
+    if (merged) {
+      lists[id] = {
+        name: merged.name,
+        ...(merged.deleted ? { deleted: merged.deleted } : {}),
+        members: Object.fromEntries(Object.entries(merged.members).sort(([a], [b]) => a.localeCompare(b))),
+      };
+    }
+  }
+  return { version: 1, titles, ...(Object.keys(lists).length ? { lists } : {}) };
 }
 
 function latestObservedStamp(state: SyncStateV1): HybridTimestampV1 | null {
@@ -184,6 +244,11 @@ function latestObservedStamp(state: SyncStateV1): HybridTimestampV1 | null {
       if (field && (!latest || compareHybridTimestamps(field.changedAt, latest) > 0)) {
         latest = field.changedAt;
       }
+    }
+  }
+  for (const list of Object.values(state.lists ?? {})) {
+    for (const field of [list.name, list.deleted, ...Object.values(list.members)]) {
+      if (field && (!latest || compareHybridTimestamps(field.changedAt, latest) > 0)) latest = field.changedAt;
     }
   }
   return latest;
@@ -198,10 +263,22 @@ export function applyBooleanChange(
   now = new Date().toISOString(),
 ): SyncStateV1 {
   if (!isDeviceId(deviceId)) throw new Error("The sync device ID is not a valid UUID.");
-  const nowMs = requireCanonicalIso(now, "The local change time");
   const current = state.titles[key]?.[fieldName];
   if (current?.value === value) return state;
 
+  const changed: SyncBooleanFieldV1 = { value, changedAt: nextChangeStamp(state, deviceId, now) };
+  return {
+    ...state,
+    titles: {
+      ...state.titles,
+      [key]: { ...state.titles[key], [fieldName]: changed },
+    },
+  };
+}
+
+function nextChangeStamp(state: SyncStateV1, deviceId: string, now: string): HybridTimestampV1 {
+  if (!isDeviceId(deviceId)) throw new Error("The sync device ID is not a valid UUID.");
+  const nowMs = requireCanonicalIso(now, "The local change time");
   const latest = latestObservedStamp(state);
   const latestMs = latest ? requireCanonicalIso(latest.wallTime, "The observed change time") : null;
   if (latestMs !== null && latestMs > nowMs + MAX_FUTURE_SKEW_MS) {
@@ -214,22 +291,40 @@ export function applyBooleanChange(
     wallTimeMs += 1;
     counter = 0;
   }
-  const changed: SyncBooleanFieldV1 = {
-    value,
-    changedAt: {
+  return {
       wallTime: new Date(wallTimeMs).toISOString(),
       counter,
       deviceId,
-    },
   };
+}
 
-  return {
-    version: 1,
-    titles: {
-      ...state.titles,
-      [key]: { ...state.titles[key], [fieldName]: changed },
-    },
-  };
+export function activeWatchlists(state: SyncStateV1): Array<{ id: string; list: SyncWatchlist }> {
+  return Object.entries(state.lists ?? {}).filter(([, list]) => !list.deleted?.value)
+    .map(([id, list]) => ({ id, list }))
+    .sort((a, b) => a.list.name.value.localeCompare(b.list.name.value) || a.id.localeCompare(b.id));
+}
+
+export function changeWatchlist(
+  state: SyncStateV1, deviceId: string, id: string,
+  action: { name: string } | { delete: true } | { key: TitleKey; member: boolean },
+  now = new Date().toISOString(),
+): SyncStateV1 {
+  if (!isDeviceId(id)) throw new Error("Invalid watchlist ID.");
+  const current = state.lists?.[id];
+  if (current?.deleted?.value) throw new Error("This watchlist has been deleted.");
+  const changedAt = nextChangeStamp(state, deviceId, now);
+  let list: SyncWatchlist;
+  if ("name" in action) {
+    const name = action.name.trim();
+    if (!name || name.length > 80) throw new Error("Use a watchlist name of 1–80 characters.");
+    list = { ...current, name: { value: name, changedAt }, members: current?.members ?? {} };
+  } else {
+    if (!current) throw new Error("This watchlist no longer exists.");
+    list = "delete" in action
+      ? { ...current, deleted: { value: true, changedAt } }
+      : { ...current, members: { ...current.members, [action.key]: { value: action.member, changedAt } } };
+  }
+  return { ...state, lists: { ...state.lists, [id]: list } };
 }
 
 export function migrateUserStateToSync(
@@ -275,7 +370,7 @@ export function createSyncEnvelope(
   const latestMs = latest ? requireCanonicalIso(latest.wallTime, "The observed change time") : nowMs;
   return {
     format: SYNC_DOCUMENT_FORMAT,
-    version: 1,
+    version: 2,
     deviceId,
     writtenAt: new Date(Math.max(nowMs, latestMs)).toISOString(),
     state,
@@ -299,7 +394,7 @@ export function parseSyncEnvelope(
   const candidate = value as Partial<SyncEnvelopeV1>;
   if (
     candidate.format !== SYNC_DOCUMENT_FORMAT ||
-    candidate.version !== 1 ||
+    (candidate.version !== 1 && candidate.version !== 2) ||
     !isDeviceId(candidate.deviceId)
   ) {
     throw new Error("The sync document format or version is unsupported.");
@@ -319,13 +414,14 @@ export function parseSyncEnvelope(
   }
 
   const state = validateSyncState(candidate.state, nowMs, maxFutureSkewMs);
+  if (candidate.version === 1 && state.lists) throw new Error("Watchlists require a version 2 envelope.");
   const latest = latestObservedStamp(state);
   if (latest && Date.parse(latest.wallTime) > writtenAtMs) {
     throw new Error("The sync document was written before one of its contained changes.");
   }
   return {
     format: SYNC_DOCUMENT_FORMAT,
-    version: 1,
+    version: candidate.version,
     deviceId: candidate.deviceId,
     writtenAt: candidate.writtenAt as string,
     state,
@@ -334,5 +430,5 @@ export function parseSyncEnvelope(
 
 export function syncFileName(deviceId: string): string {
   if (!isDeviceId(deviceId)) throw new Error("The sync device ID is not a valid UUID.");
-  return `flixate-state-${deviceId}.json`;
+  return `flixate-state-v2-${deviceId}.json`;
 }

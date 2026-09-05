@@ -21,6 +21,7 @@ import {
   type SyncMetadataV1,
 } from "../sync/sync-metadata.js";
 import { SyncCoordinator } from "../sync/sync-coordinator.js";
+import { activeWatchlists } from "../sync/sync-state.js";
 
 export type DriveSyncStatus = {
   kind: "local" | "ready" | "connecting" | "syncing" | "synced" | "offline" | "attention";
@@ -99,7 +100,9 @@ function successfulStatus(result: DriveSyncResult): DriveSyncStatus {
   const seenCount = Object.values(result.state.titles)
     .filter((title) => title?.seen?.value)
     .length;
-  const seenSummary = `${seenCount} seen ${seenCount === 1 ? "title" : "titles"}`;
+  const listCount = activeWatchlists(result.state).length;
+  const seenSummary = `${seenCount} seen ${seenCount === 1 ? "title" : "titles"}`
+    + (listCount ? ` and ${listCount} ${listCount === 1 ? "watchlist" : "watchlists"}` : "");
   if (result.warnings.length > 0) {
     return {
       kind: "attention",

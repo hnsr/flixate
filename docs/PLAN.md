@@ -427,7 +427,6 @@ Useful defaults:
 ### Later features
 
 - shareable filter presets;
-- multiple named watchlists, separate from seen state (scheduled for Phase 4 below);
 - personal rating and notes;
 - suggestions based on genres, score, and unseen state;
 - shared household state across different Google accounts;
@@ -542,8 +541,9 @@ disablement is documented and takes only a manual workflow re-enable/run.
 
 ### Phase 4 — year filtering, multiple watchlists, and refinement
 
-Status: ready to start; scope revised on 2026-09-05. The promoted cross-device sync
-track has completed its personal version-1 rollout.
+Status: implemented on 2026-09-05. See [PHASE-4.md](PHASE-4.md) for the delivered
+behavior, versioned watchlist migration, and automated verification. The promoted
+cross-device sync track was completed before this phase.
 
 - Add release/first-air year filtering with optional lower and upper bounds.
 - Limit the catalog discovery shortlist to 100 titles, including on initial load.
@@ -562,7 +562,8 @@ track has completed its personal version-1 rollout.
   export/import. Extend the versioned state and backup formats with safe migration
   and handling of older app versions; the existing single `watchlisted` boolean is
   not sufficient for multiple lists. See [SYNC-PLAN.md](SYNC-PLAN.md).
-- Add filter presets; the exact preset interaction remains to be specified.
+- Add named browser-local filter presets: save the current search, filters, and
+  sort; apply or delete a preset. Presets are not synchronized or included in backups.
 - Improve the responsive/mobile layout where needed.
 - Fill any remaining gaps in snapshot-age and coverage indicators; the update date,
   stale-catalog warning, and US+NL label already exist.

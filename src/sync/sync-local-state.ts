@@ -7,7 +7,8 @@ import {
   type SyncStateV1,
 } from "./sync-state.js";
 
-export const LOCAL_SYNC_STATE_KEY = "flixate:sync-state:v1";
+export const LEGACY_SYNC_STATE_KEY = "flixate:sync-state:v1";
+export const LOCAL_SYNC_STATE_KEY = "flixate:sync-state:v2";
 
 type LocalSyncStorage = Pick<Storage, "getItem" | "setItem">;
 
@@ -25,14 +26,16 @@ export function loadOrMigrateLocalSyncState(
   legacyState: UserStateV1,
   now = new Date().toISOString(),
 ): SyncStateV1 {
-  const migrated = migrateUserStateToSync(legacyState, deviceId, now);
-  try {
-    const raw = storage.getItem(LOCAL_SYNC_STATE_KEY);
-    if (!raw) return migrated;
-    return mergeSyncStates(parseLocalSyncState(raw, deviceId), migrated);
-  } catch {
-    return migrated;
+  let migrated = migrateUserStateToSync(legacyState, deviceId, now);
+  for (const key of [LEGACY_SYNC_STATE_KEY, LOCAL_SYNC_STATE_KEY]) {
+    try {
+      const raw = storage.getItem(key);
+      if (raw) migrated = mergeSyncStates(migrated, parseLocalSyncState(raw, deviceId));
+    } catch {
+      // Keep valid state from the other format if one copy is malformed.
+    }
   }
+  return migrated;
 }
 
 export function saveLocalSyncState(

@@ -3,12 +3,15 @@ import { memo, useCallback, useRef } from "react";
 import { SynopsisRepository } from "../data/catalog.js";
 import type { CatalogDocument, CoreTitle, TitleKey } from "../domain/catalog.js";
 import { CatalogCard } from "./CatalogCard.js";
+import type { WatchlistOption } from "./WatchlistControls.js";
 
 type CatalogListProps = {
   catalog: CatalogDocument;
   titles: CoreTitle[];
   seenKeys: ReadonlySet<TitleKey>;
   onToggleSeen: (key: TitleKey) => void;
+  watchlists?: WatchlistOption[];
+  onMembershipChange?: (listId: string, key: TitleKey, member: boolean) => void;
 };
 
 export const CatalogList = memo(function CatalogList(props: CatalogListProps): React.JSX.Element {
@@ -50,6 +53,8 @@ export const CatalogList = memo(function CatalogList(props: CatalogListProps): R
             seen={props.seenKeys.has(title.key)}
             synopsisRepository={synopsisRepository}
             onToggleSeen={() => props.onToggleSeen(title.key)}
+            watchlists={props.watchlists}
+            onMembershipChange={(id, member) => props.onMembershipChange?.(id, title.key, member)}
           />
         ))}
       </div>
@@ -77,6 +82,8 @@ export const CatalogList = memo(function CatalogList(props: CatalogListProps): R
                 synopsisRepository={synopsisRepository}
                 onToggleSeen={() => props.onToggleSeen(title.key)}
                 onSizeChange={measureList}
+                watchlists={props.watchlists}
+                onMembershipChange={(id, member) => props.onMembershipChange?.(id, title.key, member)}
               />
             </div>
           );

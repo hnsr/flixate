@@ -195,7 +195,7 @@ export function SyncControls(props: SyncControlsProps): React.JSX.Element {
                     <strong>Permanently delete the Drive copy?</strong>
                     <p>
                       This deletes every Flixate sync file in this account and disconnects this browser.
-                      Local seen history stays here. Another connected device can upload its copy again.
+                      Local seen history and watchlists stay here. Another connected device can upload its copy again.
                     </p>
                     <div className="dialog-actions">
                       <button
@@ -219,7 +219,7 @@ export function SyncControls(props: SyncControlsProps): React.JSX.Element {
             ) : (
               <>
                 <p className="sync-intro">
-                  Keep seen history in your own hidden Google Drive app-data folder. Flixate has no server and cannot browse your normal Drive files.
+                  Keep seen history and watchlists in your own hidden Google Drive app-data folder. Flixate has no server and cannot browse your normal Drive files.
                   {" "}<a href={`${import.meta.env.BASE_URL}privacy.html`}>How Flixate uses Google data</a>
                 </p>
                 {props.controller.googleError && (

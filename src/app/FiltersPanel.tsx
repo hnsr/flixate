@@ -51,6 +51,7 @@ export const FiltersPanel = memo(function FiltersPanel({ settings, genres, onCha
     settings.minimumRating !== null,
     settings.maximumRating !== null,
     settings.minimumVotes > 0,
+    settings.minimumYear !== null || settings.maximumYear !== null,
     settings.genres.length > 0,
   ].filter(Boolean).length;
 
@@ -92,6 +93,25 @@ export const FiltersPanel = memo(function FiltersPanel({ settings, genres, onCha
           { value: "only", label: "Only seen" },
         ]}
       />
+
+      <div className="filter-group two-column-fields">
+        <label>
+          <span>Year from</span>
+          <input type="number" min="1800" max="9999" placeholder="Any"
+            value={settings.minimumYear ?? ""}
+            onChange={(event) => update("minimumYear", event.target.value ? Number(event.target.value) : null)} />
+        </label>
+        <label>
+          <span>Year through</span>
+          <input type="number" min="1800" max="9999" placeholder="Any"
+            value={settings.maximumYear ?? ""}
+            onChange={(event) => update("maximumYear", event.target.value ? Number(event.target.value) : null)} />
+        </label>
+        {settings.minimumYear !== null && settings.maximumYear !== null
+          && settings.minimumYear > settings.maximumYear && (
+          <p className="field-note">The starting year is after the ending year.</p>
+        )}
+      </div>
 
       <div className="filter-group two-column-fields">
         <label>

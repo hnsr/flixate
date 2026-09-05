@@ -15,6 +15,15 @@ const titles: CoreTitle[] = [
 ];
 
 describe("catalog filters", () => {
+  it("applies inclusive year bounds to movies and shows and excludes unknown years only when bounded", () => {
+    const withUnknown = [...titles, { ...titles[0]!, key: "movie:5" as TitleKey, releaseYear: undefined }];
+    expect(filterAndSortTitles(withUnknown, DEFAULT_FILTERS, new Set())).toHaveLength(5);
+    expect(filterAndSortTitles(withUnknown, { ...DEFAULT_FILTERS, minimumYear: 2020, maximumYear: 2023 }, new Set())
+      .map(title => title.key)).toEqual(["movie:1", "movie:3"]);
+    expect(filterAndSortTitles(withUnknown, { ...DEFAULT_FILTERS, minimumYear: 2024 }, new Set())
+      .map(title => title.key)).toEqual(["tv:2"]);
+    expect(filterAndSortTitles(withUnknown, { ...DEFAULT_FILTERS, minimumYear: 2024, maximumYear: 2020 }, new Set())).toEqual([]);
+  });
   it("hides seen titles by default and sorts unrated records last", () => {
     const result = filterAndSortTitles(titles, DEFAULT_FILTERS, new Set<TitleKey>(["movie:1"]));
     expect(result.map((title) => title.key)).toEqual(["tv:2", "movie:4", "movie:3"]);

@@ -2,11 +2,17 @@
 
 Flixate is a local-first PWA for finding movies and series worth watching. The app
 has a representative fixture for everyday development and a production pipeline
-for the complete generated US+NL streaming catalog. Seen history is stored locally
+for the complete generated US+NL streaming catalog. Seen history and named watchlists are stored locally
 by default and can optionally synchronize between devices through the user's own
 hidden Google Drive app-data folder; Flixate has no application server or database.
 
 Open the live app at <https://hnsr.github.io/flixate/>.
+
+Discovery shows the first 100 matches after searching, filtering, and sorting the
+whole catalog. Narrow by score, genre, type, or release year, and save favorite
+filter combinations in this browser. Use **Manage watchlists** to create personal
+lists and **Lists** on a title to add it to one or more of them. Individual lists
+are not limited to 100 titles.
 
 ## Run locally
 
@@ -62,6 +68,7 @@ and recovery instructions.
 - [Phase 1 implementation report](docs/PHASE-1.md)
 - [Phase 2 implementation report](docs/PHASE-2.md)
 - [Phase 3 deployment report](docs/PHASE-3.md)
+- [Phase 4 implementation report](docs/PHASE-4.md)
 - [Cross-device sync plan](docs/SYNC-PLAN.md)
 - [Google Drive OAuth feasibility spike](docs/SYNC-SPIKE.md)
 - [Sync S1 implementation report](docs/SYNC-S1.md)

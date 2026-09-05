@@ -1,4 +1,4 @@
-import { DriveRequestError, type DriveStateFile, type DriveStateTransport } from "./drive-transport.js";
+import { DriveRequestError, deviceIdFromSyncFileName, type DriveStateFile, type DriveStateTransport } from "./drive-transport.js";
 import {
   SyncAccountMismatchError,
   bindSyncAccount,
@@ -85,7 +85,7 @@ export class DriveSyncEngine {
     const warnings: SyncWarning[] = [];
     const documents: DownloadedDocument[] = [];
     for (const file of files) {
-      const expectedDeviceId = file.name.slice("flixate-state-".length, -".json".length);
+      const expectedDeviceId = deviceIdFromSyncFileName(file.name);
       const text = await this.transport.downloadStateFile(file);
       try {
         const envelope = parseSyncEnvelope(text);
