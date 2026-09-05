@@ -51,21 +51,21 @@ GitHub Pages deployment is live through two workflows:
   a new seven-day catalog artifact, then deploys it with the current app.
 
 Run `npm run catalog:validate` to verify a downloaded or locally generated live
-snapshot. See [the Phase 3 deployment report](PHASE-3.md) for setup, format-change,
+snapshot. See [the Phase 3 deployment report](docs/PHASE-3.md) for setup, format-change,
 and recovery instructions.
 
 ## Project documents
 
-- [Product and architecture plan](PLAN.md)
-- [Plan review](PLAN-REVIEW.md)
-- [Phase 0 feasibility report](PHASE-0.md)
-- [Phase 1 implementation report](PHASE-1.md)
-- [Phase 2 implementation report](PHASE-2.md)
-- [Phase 3 deployment report](PHASE-3.md)
-- [Cross-device sync plan](SYNC-PLAN.md)
-- [Google Drive OAuth feasibility spike](SYNC-SPIKE.md)
-- [Sync S1 implementation report](SYNC-S1.md)
-- [Sync S2 implementation report](SYNC-S2.md)
-- [Sync S3 implementation and rollout report](SYNC-S3.md)
-- [Google Drive sync guide](SYNC-GUIDE.md)
-- [Sync S4 production rollout report](SYNC-S4.md)
+- [Product and architecture plan](docs/PLAN.md)
+- [Plan review](docs/PLAN-REVIEW.md)
+- [Phase 0 feasibility report](docs/PHASE-0.md)
+- [Phase 1 implementation report](docs/PHASE-1.md)
+- [Phase 2 implementation report](docs/PHASE-2.md)
+- [Phase 3 deployment report](docs/PHASE-3.md)
+- [Cross-device sync plan](docs/SYNC-PLAN.md)
+- [Google Drive OAuth feasibility spike](docs/SYNC-SPIKE.md)
+- [Sync S1 implementation report](docs/SYNC-S1.md)
+- [Sync S2 implementation report](docs/SYNC-S2.md)
+- [Sync S3 implementation and rollout report](docs/SYNC-S3.md)
+- [Google Drive sync guide](docs/SYNC-GUIDE.md)
+- [Sync S4 production rollout report](docs/SYNC-S4.md)
