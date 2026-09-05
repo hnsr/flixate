@@ -106,10 +106,11 @@ https://www.googleapis.com/auth/drive.appdata
 Keep `VITE_GOOGLE_CLIENT_ID` as a GitHub repository variable; it is public client
 configuration, not a secret. Never add a client secret to this static app.
 
-For a few personally known users, Google's personal-use exception does not require
-full verification, but an app left in **Testing** limits access to listed test users
-and test authorizations expire after seven days. Moving the audience to
-**In production** avoids that testing-mode expiry; review the consent screen and
-warning shown to each intended user before rollout. See Google's current
-[app audience documentation](https://support.google.com/cloud/answer/15549945) and
-[personal-use exception](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification).
+The production app uses an **External**, **In production** audience without OAuth
+verification. Google's personal-use exception permits fewer than 100 users to
+continue through the unverified-app warning. This keeps ordinary personal Google
+accounts usable and avoids Testing mode's seven-day authorization expiry. An
+**Internal** audience would restrict Flixate to accounts in one Google Workspace or
+Cloud Identity organization and is therefore not appropriate here. See Google's
+current [app audience documentation](https://support.google.com/cloud/answer/15549945)
+and [personal-use exception](https://support.google.com/cloud/answer/13464323).

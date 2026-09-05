@@ -18,8 +18,9 @@ the startup payload controlled. There are no known blockers.
 
 Implementation update: Phases 1 and 2 completed on 2026-08-31. The catalog pipeline
 and app resolved the implementation wrinkles identified below; the regional,
-season-level availability, rent/buy, and per-browser state points remain deliberate
-product trade-offs.
+season-level availability, and rent/buy points remain deliberate product trade-offs.
+The optional Google Drive track completed on 2026-09-05 and resolved cross-device
+seen state for one Google account without changing local-only behavior.
 
 ## Most important findings
 
@@ -136,11 +137,13 @@ misleading. Retain and display vote count, provide a minimum-votes filter, and m
 fewer than 50 votes as low-confidence. Do not remove low-vote or unrated titles from
 the catalog merely because their quality signal is weak.
 
-### 12. Seen state will not automatically be shared between people or devices
+### 12. Seen state can now follow one Google account across devices
 
-It is per browser profile and device. Export/import supports manual transfer, but
-two people using Flixate independently will have two seen lists. That is already an
-intentional architectural trade-off in the user-state design.
+Local-only use remains per browser profile, and export/import remains available.
+The completed optional Google Drive sync track now carries seen state between a
+person's connected devices without adding a Flixate backend. Different Google
+accounts still have independent histories; shared household state remains outside
+version 1 by design.
 
 ### 13. GitHub Pages introduces a small routing and PWA gotcha
 

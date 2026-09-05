@@ -51,9 +51,10 @@ This gives the project a genuinely useful zero-cost version with:
 - no generated catalog commits bloating the repository;
 - an installable app that continues to use the last downloaded catalog offline.
 
-Cross-device sync should be a later, optional feature. Using a repository as the
-storage backend is technically possible, but secure browser authentication and
-conflict handling make it disproportionately complex for the first version.
+Cross-device sync was promoted after the local-first MVP proved useful and is now
+available as an optional Google Drive feature. Using the application repository as
+the storage backend was rejected because secure browser authentication and conflict
+handling were disproportionately complex for a personal static app.
 
 ## Zero-cost sanity check
 
@@ -69,7 +70,7 @@ of friends, with these conditions and small frictions:
 | JustWatch-derived eligibility | $0 through TMDB | JustWatch attribution is mandatory; no separate Watchmode/JustWatch subscription is planned |
 | TMDB ratings | $0 through TMDB | `vote_average` and `vote_count` arrive in discovery results, so no second data source, title mapping, or rating import is needed |
 | IMDb ratings | Not used in MVP | Reconsider after the app is useful; its mapping and distribution constraints do not affect version 1 |
-| Seen state | $0 | Browser-local storage plus manual JSON backup/import; no automatic cross-device sync |
+| Seen state and optional sync | $0 | Immediate browser-local storage, JSON backup/import, and optional synchronization through each user's hidden Google Drive app-data folder |
 | Rotten Tomatoes | Not used | Official data integration requires an approved licensing arrangement, so it cannot be assumed to fit the budget |
 
 Occasional manual re-enabling/triggering of the catalog workflow is the only
@@ -372,6 +373,7 @@ The awkward part is authentication:
 - asking the user to paste a fine-grained personal access token works, but leaves a
   password-equivalent credential accessible to browser code and any XSS bug.
 
+The later sync track chose Google Drive's narrow `appDataFolder` permission instead.
 Therefore:
 
 - do not make GitHub sync part of the MVP;
@@ -428,7 +430,7 @@ Useful defaults:
 - watchlist/"maybe" state separate from seen;
 - personal rating and notes;
 - suggestions based on genres, score, and unseen state;
-- optional cross-device sync;
+- shared household state across different Google accounts;
 - optional additional watch regions or a worldwide union if US+NL coverage proves
   too limiting;
 - an optional IMDb score/link adapter after MVP, subject to mapping cost,
@@ -540,23 +542,23 @@ disablement is documented and takes only a manual workflow re-enable/run.
 
 ### Phase 4 — refinement (medium; after the sync track)
 
-Status: deferred until the promoted cross-device sync track has reached its go/no-go
-gate and, if viable, its initial rollout.
+Status: ready to start. The promoted cross-device sync track completed its personal
+version-1 rollout on 2026-09-05.
 
 - Add remaining filters, presets, accessibility, keyboard use, and responsive polish.
 - Tune parse/query performance from real catalog measurements and shard only if
   necessary.
 - Add snapshot-age and coverage indicators.
 
-### Phase 5 — cross-device sync (promoted; execute next)
+### Phase 5 — cross-device sync (promoted)
 
-Status: in progress. S0 authorization feasibility, S1's deterministic state layer,
-S2's production Drive adapter, and S3 account/sync UX are complete. S4 production
-hardening is implemented, with real-device acceptance and Google Cloud audience
-confirmation pending. See
+Status: completed on 2026-09-05. S0 authorization feasibility, S1's deterministic
+state layer, S2's production Drive adapter, S3 account/sync UX, and S4 production
+rollout are complete. Desktop recovery tests and an Android Chrome cross-device
+restore passed; lower-value adversarial manual cases are consciously deferred. See
 [SYNC-PLAN.md](SYNC-PLAN.md) for the Google Drive `appDataFolder` design, merge
-model, account safety, delivery steps, and acceptance criteria. This track is being
-taken before Phase 4 without renumbering the existing roadmap.
+model, account safety, delivery steps, and acceptance criteria. This track was taken
+before Phase 4 without renumbering the existing roadmap.
 
 - First prove Google browser authorization and private Drive app-data round trips on
   desktop Chrome, Android Chrome, and the installed PWA.

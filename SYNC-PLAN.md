@@ -1,8 +1,8 @@
 # Cross-device sync plan
 
-Status: S0 authorization feasibility, S1 deterministic state, S2's production Drive
-adapter, and S3 account/sync UX are complete. S4 production hardening is implemented;
-real-device acceptance and Google Cloud audience confirmation remain. See
+Status: completed on 2026-09-05. S0 authorization feasibility, S1 deterministic
+state, S2's production Drive adapter, S3 account/sync UX, and S4 production rollout
+are complete. See
 [SYNC-SPIKE.md](SYNC-SPIKE.md), [SYNC-S1.md](SYNC-S1.md),
 [SYNC-S2.md](SYNC-S2.md), [SYNC-S3.md](SYNC-S3.md), and
 [SYNC-S4.md](SYNC-S4.md).
@@ -313,7 +313,7 @@ the adapter cannot write another device's document.
 ### S3 — account and sync UX
 
 Status: completed. Deployed first-connect, immediate-write, reload, and browser-reset
-recovery checks passed; true multi-device coverage continues in S4. See
+recovery checks passed; Android Chrome cross-device recovery later passed in S4. See
 [SYNC-S3.md](SYNC-S3.md).
 
 - Add connect, first-merge confirmation, sync status, manual retry, and disconnect.
@@ -328,8 +328,9 @@ replacement cannot silently disclose or erase the existing browser's state.
 
 ### S4 — production rollout
 
-Status: in progress on 2026-09-05. Automated hardening and documentation are
-implemented; see [SYNC-S4.md](SYNC-S4.md) for the remaining real-device gates.
+Status: completed on 2026-09-05. Automated hardening, production configuration,
+documentation, desktop acceptance, and Android Chrome cross-device recovery passed.
+See [SYNC-S4.md](SYNC-S4.md) for the accepted residual manual-test risk.
 
 - Configure the production OAuth client and documented consent-screen audience.
 - Test two desktop profiles, Android Chrome, an installed PWA, offline edits, token
@@ -365,18 +366,19 @@ maintenance is introduced.
 - The implementation stays comfortably within the no-cost Drive API threshold for
   the intended handful of users.
 
-## Remaining rollout decisions
+## Resolved rollout decisions
 
 1. The saved-token path shows no UI; reauthorization after simulated expiry showed
    only a brief self-closing popup in the tested environments.
-2. Can the OAuth app be published for the known personal users without a recurring
-   test-mode authorization expiry or confusing warning?
+2. The OAuth app uses an External, In-production, unverified audience under Google's
+   fewer-than-100-user personal-use exception. Users may see the unverified warning,
+   but ordinary personal accounts work and Testing mode's seven-day expiry is gone.
 3. `about.get` returned an opaque `permissionId` using only `drive.appdata` in all
    tested environments.
 4. S1 adopted a hybrid logical clock and a 24-hour future-skew limit.
-5. Should connecting always perform an immediate sync, or first show local/remote
-   counts before confirmation?
+5. Connecting performs an immediate sync after the explicit merge-or-replace
+   confirmation; an additional count-preview step was not worth the friction.
 6. Filters remain intentionally device-local under the first release's non-goals.
 
-Items 2 and 5 remain S3/S4 rollout decisions, not reasons to add a backend
-pre-emptively.
+No resolved rollout decision requires a backend. The remaining manual stress cases
+are recorded as accepted personal-use risk in [SYNC-S4.md](SYNC-S4.md).

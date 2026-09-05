@@ -2,7 +2,9 @@
 
 Flixate is a local-first PWA for finding movies and series worth watching. The app
 has a representative fixture for everyday development and a production pipeline
-for the complete generated US+NL streaming catalog.
+for the complete generated US+NL streaming catalog. Seen history is stored locally
+by default and can optionally synchronize between devices through the user's own
+hidden Google Drive app-data folder; Flixate has no application server or database.
 
 Open the live app at <https://hnsr.github.io/flixate/>.
 

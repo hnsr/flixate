@@ -1,7 +1,9 @@
 # Sync S4 production rollout report
 
-Status: in progress on 2026-09-05; autonomous hardening complete, real-device
-acceptance and Google Cloud audience confirmation remain.
+Status: completed on 2026-09-05 for the personal version-1 rollout. Automated
+hardening, production configuration, desktop acceptance, and Android Chrome
+cross-device recovery passed. Lower-value manual stress cases are consciously
+deferred and documented below.
 
 ## Implemented rollout safeguards
 
@@ -16,6 +18,9 @@ acceptance and Google Cloud audience confirmation remain.
 - [SYNC-GUIDE.md](SYNC-GUIDE.md) documents normal use, merge/replacement, offline
   recovery, token renewal, disconnect, remote deletion, full removal, limitations,
   and owner configuration.
+- The public homepage links to a Privacy Policy and Terms of Service, the Drive
+  connection UI links directly to its Google-data disclosure, and the production
+  OAuth brand has an exact 120×120 PNG logo.
 
 ## Privacy and artifact audit
 
@@ -60,24 +65,35 @@ and PWA behavior. The completed local pass contains 86 unit/integration tests.
 - First connection, explicit merge choice, immediate seen upload, and manual sync.
 - Hard refresh with automatic startup sync.
 - Complete site-data deletion followed by a fresh merge that restored Drive history.
+- Android Chrome connected to the same Google account and restored the existing
+  seen history, proving the version-1 cross-device outcome on the deployed app.
+- The Google OAuth audience is External and In production. For this personal app it
+  remains unverified under Google's fewer-than-100-user exception, accepting the
+  user-facing unverified-app warning instead of Testing mode's recurring seven-day
+  expiry.
 
-## Remaining manual gates
+## Accepted residual manual-test risk
 
-1. In Google Cloud, confirm the production Web client has only the exact production
-   origin `https://hnsr.github.io` (use a separate client/project for localhost if
-   strict production separation is desired).
-2. Confirm the OAuth audience. **Testing** requires every user to be allowlisted and
-   authorizations expire after seven days; **In production** is the lower-friction
-   choice for the intended few personally known users.
-3. Connect a second desktop profile/device to the same account. Change different
-   titles on each side, then change the same title later on one side and verify both
-   converge after reload/sync.
-4. Make an offline seen and unseen change, restore connectivity, and verify the
-   merged count and visible state.
-5. Repeat one round trip in Android Chrome and an installed PWA if that installation
-   mode will be used.
-6. Exercise **Disconnect** and the new destructive deletion flow only with disposable
-   test history or after exporting a backup.
+The owner explicitly chose not to spend more time on an exhaustive manual matrix
+after the real phone restored Drive-backed history successfully. The following
+scenarios remain covered by automated tests and design safeguards but have not all
+been repeated manually in production:
 
-Passing items 1–5 closes S4. Item 6 is a privacy-control acceptance check and may be
-deferred until a disposable account/history is convenient.
+- concurrent edits to different titles from two active devices;
+- competing later edits to the same title, including an unseen tombstone;
+- extended offline edits followed by reconnection;
+- a separate installed-PWA round trip; and
+- the destructive remote-deletion flow with disposable history.
+
+This is accepted for a free app used by the owner and a few known people. The
+deterministic merge, offline retention, account mismatch, token expiry, and deletion
+paths have automated coverage; JSON export remains the recovery escape hatch. Any
+production report of lost or surprising state reopens the relevant S4 case rather
+than requiring the complete matrix pre-emptively.
+
+## Outcome
+
+S4 and the promoted cross-device sync track are closed. Flixate now meets the
+personal version-1 goal: optional Google Drive sync carries seen history between a
+person's browsers without a Flixate server or database, while local-only use and
+manual export/import remain available. Phase 4 refinement is unblocked.
