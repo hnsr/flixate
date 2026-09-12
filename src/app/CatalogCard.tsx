@@ -117,8 +117,13 @@ export function CatalogCard(props: CatalogCardProps): React.JSX.Element {
           <button type="button" className="secondary-button" aria-expanded={expanded} onClick={toggleDetails}>
             {expanded ? "Close details" : "Read synopsis"}
           </button>
-          <a href={tmdbUrl(props.title)} target="_blank" rel="noreferrer" className="tmdb-link">
+          <a href={tmdbUrl(props.title)} target="_blank" rel="noreferrer" className="title-source-link">
             TMDB <span aria-hidden="true">↗</span>
+          </a>
+          <a href={`https://www.imdb.com/find/?q=${encodeURIComponent(props.title.title)}`}
+            target="_blank" rel="noopener noreferrer" className="title-source-link"
+            title="Search this title on IMDb (opens in a new tab)">
+            IMDb <span aria-hidden="true">↗</span>
           </a>
           <button type="button" className="secondary-button" aria-expanded={listsOpen}
             aria-label={`Watchlists for ${props.title.title}`} onClick={() => setListsOpen(!listsOpen)}>

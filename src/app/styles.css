@@ -773,14 +773,14 @@ select {
   transform: none;
 }
 
-.tmdb-link {
+.title-source-link {
   padding: 8px 10px;
   color: var(--muted);
   text-decoration: none;
   font-size: 0.73rem;
 }
 
-.tmdb-link:hover {
+.title-source-link:hover {
   color: var(--accent);
 }
 
@@ -1657,8 +1657,8 @@ footer p {
     padding-inline: 9px;
   }
 
-  .tmdb-link {
-    display: none;
+  .title-source-link {
+    padding-inline: 6px;
   }
 
   .seen-button {

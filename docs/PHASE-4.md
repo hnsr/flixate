@@ -146,3 +146,11 @@ changed. The fixture includes representative Japanese, English, and Dutch titles
 
 Tests cover discovery/region merging, compressed artifact output, validation,
 language names, missing values, and the movie/series header on desktop and mobile.
+
+## IMDb search links
+
+Each card includes a small **IMDb ↗** link beside TMDB. It opens IMDb's title
+search in a new tab with the full display title URL-encoded as the `q` parameter.
+This is a search shortcut, not a verified IMDb title mapping, and needs no catalog
+refresh, IMDb import, or new API. Browser coverage checks movies and series,
+punctuation/non-ASCII titles, a separate tab, and mobile page width.
