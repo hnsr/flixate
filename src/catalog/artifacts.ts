@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { normalizeOriginalLanguage } from "../domain/languages.js";
 import type {
   CatalogTitle,
   DateRange,
@@ -16,6 +17,7 @@ export function toCatalogTitles(titles: Iterable<DiscoveredTitle>): CatalogTitle
       key: title.key,
       tmdbId: title.tmdbId,
       title: title.title,
+      ...(title.originalLanguage ? { originalLanguage: title.originalLanguage } : {}),
       mediaType: title.mediaType === "tv" ? "show" : "movie",
       genreIds: title.genreIds,
       ...(title.releaseDate ? { releaseYear: Number(title.releaseDate.slice(0, 4)) } : {}),
@@ -91,6 +93,9 @@ export function validateCatalog(titles: readonly CatalogTitle[]): string[] {
     if (keys.has(title.key)) errors.push(`Duplicate key: ${title.key}`);
     keys.add(title.key);
     if (!title.title.trim()) errors.push(`Blank title: ${title.key}`);
+    if (title.originalLanguage !== undefined && normalizeOriginalLanguage(title.originalLanguage) !== title.originalLanguage) {
+      errors.push(`Invalid original language: ${title.key}`);
+    }
     if (!Number.isInteger(title.tmdbId) || title.tmdbId < 1) {
       errors.push(`Invalid TMDB ID: ${title.key}`);
     }

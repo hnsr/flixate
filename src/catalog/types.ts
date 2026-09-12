@@ -15,6 +15,7 @@ export type TmdbDiscoverItem = {
   name?: string;
   genre_ids: number[];
   overview?: string;
+  original_language?: string;
   poster_path?: string | null;
   release_date?: string;
   first_air_date?: string;
@@ -39,6 +40,7 @@ export type DiscoveredTitle = {
   releaseDate: string | null;
   posterPath: string | null;
   overview: string | null;
+  originalLanguage?: string;
   regions: Set<Region>;
   displaySourceRegion: Region;
   rating?: number;
@@ -49,6 +51,7 @@ export type CatalogTitle = {
   key: `${MediaType}:${number}`;
   tmdbId: number;
   title: string;
+  originalLanguage?: string;
   mediaType: "movie" | "show";
   genreIds: number[];
   releaseYear?: number;

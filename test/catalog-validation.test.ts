@@ -17,6 +17,15 @@ describe("catalog payload validation", () => {
     expect(parseCoreCatalog({ schemaVersion: 1, titles: [title] }, 1).titles).toEqual([title]);
   });
 
+  it("accepts the optional original language but rejects malformed language codes", () => {
+    expect(parseCoreCatalog({ schemaVersion: 1, titles: [{ ...title, originalLanguage: "ko" }] }, 1)
+      .titles[0]?.originalLanguage).toBe("ko");
+    for (const originalLanguage of [null, 123, "", "xx", "Korean", "KO", "en-US"]) {
+      expect(() => parseCoreCatalog({ schemaVersion: 1, titles: [{ ...title, originalLanguage }] }, 1))
+        .toThrow("invalid title");
+    }
+  });
+
   it("rejects duplicate keys, unexpected counts, and unknown genres", () => {
     expect(() => parseCoreCatalog({ schemaVersion: 1, titles: [title, title] }, 2)).toThrow("duplicate");
     expect(() => parseCoreCatalog({ schemaVersion: 1, titles: [title] }, 2)).toThrow("expected 2");

@@ -22,6 +22,7 @@ describe("catalog artifacts", () => {
         tmdbId: 1,
         mediaType: "movie",
         title: "Movie",
+        originalLanguage: "ko",
         genreIds: [18],
         releaseDate: "2020-01-01",
         posterPath: "/movie.jpg",
@@ -42,8 +43,12 @@ describe("catalog artifacts", () => {
     expect(compact[0]?.voteCount).toBe(500);
     expect(compact[0]?.releaseYear).toBe(2020);
     expect(compact[0]?.posterPath).toBe("/movie.jpg");
+    expect(compact[0]?.originalLanguage).toBe("ko");
+    expect(compact[1]).not.toHaveProperty("originalLanguage");
     expect(compact[1]?.voteCount).toBe(0);
     expect(validateCatalog(compact)).toEqual([]);
+    expect(validateCatalog([{ ...compact[0]!, originalLanguage: "Korean" }]))
+      .toContain("Invalid original language: movie:1");
   });
 
   it("rejects episode-like key/type mismatches", () => {

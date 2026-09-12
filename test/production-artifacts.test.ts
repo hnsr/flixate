@@ -28,6 +28,7 @@ function records(): DiscoveredTitle[] {
       tmdbId: 2,
       mediaType: "tv",
       title: "Future Series",
+      originalLanguage: "ko",
       genreIds: [18, 10765],
       releaseDate: null,
       posterPath: null,
@@ -87,7 +88,7 @@ describe("production catalog artifacts", () => {
     const core = JSON.parse(gunzipSync(coreBytes).toString("utf8")) as { titles: unknown[] };
     expect(core.titles).toEqual([
       expect.objectContaining({ key: "movie:1", releaseYear: 2020, posterPath: "/poster.jpg" }),
-      expect.objectContaining({ key: "tv:2", voteCount: 0 }),
+      expect.objectContaining({ key: "tv:2", voteCount: 0, originalLanguage: "ko" }),
     ]);
 
     const movieShard = manifest.synopsisShards.shards[1]!;

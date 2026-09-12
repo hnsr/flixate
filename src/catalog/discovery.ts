@@ -1,6 +1,7 @@
 import { mapLimit } from "./concurrency.js";
 import { splitDateRange } from "./date-ranges.js";
 import { TmdbClient } from "./tmdb-client.js";
+import { normalizeOriginalLanguage } from "../domain/languages.js";
 import type {
   DateRange,
   DiscoveredTitle,
@@ -142,6 +143,7 @@ export function mergeDiscoveredItems(
     if (item.adult) continue;
     const key = `${mediaType}:${item.id}` as const;
     const existing = target.get(key);
+    const originalLanguage = normalizeOriginalLanguage(item.original_language);
     const candidate = {
       title: displayTitle(item, mediaType),
       genreIds: [...item.genre_ids].sort((a, b) => a - b),
@@ -149,6 +151,7 @@ export function mergeDiscoveredItems(
         (mediaType === "movie" ? item.release_date : item.first_air_date) || null,
       posterPath: item.poster_path || null,
       overview: item.overview?.trim() || null,
+      ...(originalLanguage ? { originalLanguage } : {}),
       ...(typeof item.vote_count === "number" ? { voteCount: item.vote_count } : {}),
       ...(typeof item.vote_average === "number" && (item.vote_count ?? 0) > 0
         ? { rating: item.vote_average }
@@ -171,6 +174,7 @@ export function mergeDiscoveredItems(
     if (REGION_PRIORITY[region] < REGION_PRIORITY[existing.displaySourceRegion]) {
       Object.assign(existing, candidate, { displaySourceRegion: region });
     } else {
+      if (!existing.originalLanguage && originalLanguage) existing.originalLanguage = originalLanguage;
       if (candidate.rating !== undefined) existing.rating = candidate.rating;
       if (candidate.voteCount !== undefined) existing.voteCount = candidate.voteCount;
     }

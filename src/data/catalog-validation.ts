@@ -1,4 +1,5 @@
 import { GENRE_LABELS, type CoreTitle } from "../domain/catalog.js";
+import { normalizeOriginalLanguage } from "../domain/languages.js";
 
 type CoreCatalogPayload = {
   schemaVersion: 1;
@@ -15,6 +16,7 @@ function validTitle(value: unknown): value is CoreTitle {
   if (!Number.isInteger(value.tmdbId) || (value.tmdbId as number) < 1) return false;
   if (value.key !== `${value.key.startsWith("tv:") ? "tv" : "movie"}:${value.tmdbId}`) return false;
   if (typeof value.title !== "string" || !value.title.trim()) return false;
+  if (value.originalLanguage !== undefined && normalizeOriginalLanguage(value.originalLanguage) !== value.originalLanguage) return false;
   if (value.mediaType !== "movie" && value.mediaType !== "show") return false;
   if ((value.mediaType === "show") !== value.key.startsWith("tv:")) return false;
   if (

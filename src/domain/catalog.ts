@@ -8,6 +8,7 @@ export type CoreTitle = {
   key: TitleKey;
   tmdbId: number;
   title: string;
+  originalLanguage?: string;
   releaseYear?: number;
   mediaType: "movie" | "show";
   genreIds: number[];

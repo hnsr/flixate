@@ -13,6 +13,17 @@ function result(id: number, title: string): TmdbPage {
 }
 
 describe("TMDB discovery", () => {
+  it("retains original language independently of region or translated title", () => {
+    const titles = new Map<string, DiscoveredTitle>();
+    mergeDiscoveredItems(titles, [{ id: 1, name: "Korean series", genre_ids: [], original_language: " KO " }], "tv", "NL");
+    mergeDiscoveredItems(titles, [{ id: 1, name: "English display title", genre_ids: [] }], "tv", "US");
+    expect(titles.get("tv:1")?.originalLanguage).toBe("ko");
+    mergeDiscoveredItems(titles, [{ id: 2, title: "Film", genre_ids: [] }], "movie", "US");
+    mergeDiscoveredItems(titles, [{ id: 2, title: "Film", genre_ids: [], original_language: "nl" }], "movie", "NL");
+    expect(titles.get("movie:2")?.originalLanguage).toBe("nl");
+    mergeDiscoveredItems(titles, [{ id: 3, title: "Unknown", genre_ids: [], original_language: "xx" }], "movie", "US");
+    expect(titles.get("movie:3")).not.toHaveProperty("originalLanguage");
+  });
   it("recursively splits result sets outside TMDB's page window", async () => {
     const client = new TmdbClient({ token: "test" }, "/unused");
     vi.spyOn(client, "get").mockImplementation(async (_endpoint, params) => {

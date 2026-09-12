@@ -639,7 +639,8 @@ select {
 
 .title-kicker {
   display: flex;
-  gap: 7px;
+  flex-wrap: wrap;
+  gap: 4px 7px;
   margin-bottom: 5px;
   color: var(--muted);
   font-size: 0.7rem;

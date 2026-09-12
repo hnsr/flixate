@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { SynopsisRepository } from "../data/catalog.js";
+import { originalLanguageName } from "../domain/languages.js";
 import type { WatchlistOption } from "./WatchlistControls.js";
 import {
   genresForTitle,
@@ -35,6 +36,7 @@ export function CatalogCard(props: CatalogCardProps): React.JSX.Element {
   const [posterFailed, setPosterFailed] = useState(false);
   const [synopsis, setSynopsis] = useState<SynopsisState>({ status: "idle" });
   const imageUrl = posterUrl(props.catalog, props.title);
+  const language = originalLanguageName(props.title.originalLanguage);
   const lowConfidence = props.title.rating !== undefined && props.title.voteCount < 50;
 
   useEffect(() => {
@@ -80,6 +82,10 @@ export function CatalogCard(props: CatalogCardProps): React.JSX.Element {
               <span>{props.title.mediaType === "show" ? "Series" : "Film"}</span>
               <span aria-hidden="true">·</span>
               <span>{props.title.releaseYear ?? "Year unknown"}</span>
+              {language && <>
+                <span aria-hidden="true">·</span>
+                <span title="Original language">{language}</span>
+              </>}
             </div>
             <h3>{props.title.title}</h3>
           </div>

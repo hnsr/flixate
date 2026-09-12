@@ -14,6 +14,9 @@ filter combinations in this browser. Use **Manage watchlists** to create persona
 lists and **Lists** on a title to add it to one or more of them. Individual lists
 are not limited to 100 titles.
 
+Cards show the title's original language beside its type and year when TMDB
+provides it. This is not a list of available dubbing or subtitle languages.
+
 Open **Exclude genres** beneath the genre filter to hide titles tagged with any
 selected genre (for example, Documentary or Animation). Exclusions take precedence
 over matching included genres and are remembered in this browser, saved filter

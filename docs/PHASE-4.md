@@ -127,3 +127,22 @@ expanded, opens a long synopsis without footer overlap, then repeats navigation 
 mobile after changing the filter layout. It also checks that off-screen titles
 remain virtualized. Full verification: 105 unit/integration tests and eight browser
 tests, plus the production build/typecheck and privacy audit.
+
+## Original language follow-up
+
+Cards now show **Series · 1999 · Korean** (or the corresponding film metadata).
+The existing TMDB discovery responses already contain `original_language`; the
+pipeline retains it as optional `originalLanguage` in the core catalog, validates
+its code, and formats an English language name in the browser. No extra service,
+per-title detail requests, or language API calls are needed. Missing/unknown
+languages and TMDB's `xx` marker are omitted; TMDB's Cantonese code is handled.
+
+This is the original language, not dubbing/subtitle availability or production
+country. Region/display-title selection does not turn the original language into
+English or Dutch. Existing catalogs without the field still load, so this is an
+additive schema-1 change: deploy the app and run the catalog workflow once (or wait
+for the nightly refresh) to populate live cards. Seen data and watchlists are not
+changed. The fixture includes representative Japanese, English, and Dutch titles.
+
+Tests cover discovery/region merging, compressed artifact output, validation,
+language names, missing values, and the movie/series header on desktop and mobile.
