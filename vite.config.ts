@@ -30,7 +30,8 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,svg}"],
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.pathname.endsWith("/data/live/manifest.json"),
+            urlPattern: ({ url, request }) => url.pathname.endsWith("/data/live/manifest.json")
+              && request.cache !== "no-store",
             handler: "NetworkFirst",
             options: {
               cacheName: "flixate-catalog-manifest",

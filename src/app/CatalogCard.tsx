@@ -41,15 +41,17 @@ export function CatalogCard(props: CatalogCardProps): React.JSX.Element {
     props.onSizeChange?.();
   }, [expanded, listsOpen, synopsis, props.watchlists, props.onSizeChange]);
 
+  const loadSynopsis = () => {
+    setSynopsis({ status: "loading" });
+    props.synopsisRepository.get(props.catalog, props.title.key)
+      .then((text) => setSynopsis({ status: "ready", text }))
+      .catch(() => setSynopsis({ status: "error" }));
+  };
+
   const toggleDetails = () => {
     const next = !expanded;
     setExpanded(next);
-    if (next && synopsis.status === "idle") {
-      setSynopsis({ status: "loading" });
-      props.synopsisRepository.get(props.catalog, props.title.key)
-        .then((text) => setSynopsis({ status: "ready", text }))
-        .catch(() => setSynopsis({ status: "error" }));
-    }
+    if (next && (synopsis.status === "idle" || synopsis.status === "error")) loadSynopsis();
   };
 
   return (
@@ -98,7 +100,10 @@ export function CatalogCard(props: CatalogCardProps): React.JSX.Element {
             {synopsis.status === "loading" && <p className="muted">Opening the file…</p>}
             {synopsis.status === "ready" && synopsis.text && <p>{synopsis.text}</p>}
             {synopsis.status === "ready" && !synopsis.text && <p className="muted">No synopsis is available for this title.</p>}
-            {synopsis.status === "error" && <p className="muted">The synopsis could not be loaded. It may not be cached while offline.</p>}
+            {synopsis.status === "error" && <>
+              <p className="muted">The synopsis could not be loaded. Check your connection and try again. If you are offline, only previously cached synopses are available.</p>
+              <button type="button" className="secondary-button" onClick={loadSynopsis}>Retry synopsis</button>
+            </>}
           </div>
         )}
 

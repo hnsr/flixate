@@ -1,3 +1,10 @@
+export class CatalogFileRequestError extends Error {
+  constructor(readonly status: number) {
+    super(`Catalog file request failed with ${status}`);
+    this.name = "CatalogFileRequestError";
+  }
+}
+
 export async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(digest)]
@@ -28,6 +35,6 @@ export async function fetchGzipJson(
   signal?: AbortSignal,
 ): Promise<unknown> {
   const response = await fetch(url, { signal });
-  if (!response.ok) throw new Error(`Catalog file request failed with ${response.status}`);
+  if (!response.ok) throw new CatalogFileRequestError(response.status);
   return decodeGzipJson(await response.arrayBuffer(), expectedSha256);
 }

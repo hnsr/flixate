@@ -36,6 +36,7 @@ export type CatalogDocument = {
     }>;
   };
   snapshotId?: string;
+  manifestUrl?: string;
   loadWarning?: string;
   titles: CoreTitle[];
 };

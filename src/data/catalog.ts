@@ -5,7 +5,7 @@ import {
   type CoreTitle,
   type TitleKey,
 } from "../domain/catalog.js";
-import { fetchGzipJson } from "./compressed-json.js";
+import { CatalogFileRequestError, fetchGzipJson } from "./compressed-json.js";
 import { parseCatalogManifest, resolveManifestFiles } from "./manifest.js";
 
 const LAST_GOOD_MANIFEST_KEY = "flixate:catalog-manifest:v1";
@@ -97,6 +97,7 @@ async function activateManifest(
     schemaVersion: 1,
     fixture: false,
     snapshotId: manifest.snapshotId,
+    manifestUrl,
     createdAt: manifest.createdAt,
     regions: ["US", "NL"],
     image: manifest.image,
@@ -171,29 +172,70 @@ function parseSynopsisShard(value: unknown): SynopsisShard {
 }
 
 export class SynopsisRepository {
-  private readonly shards = new Map<number, Promise<SynopsisShard>>();
+  private readonly shards = new Map<string, Promise<SynopsisShard>>();
+  private readonly sources = new WeakMap<CatalogDocument, CatalogDocument["synopsisShards"]>();
+  private readonly refreshes = new Map<string, Promise<CatalogDocument["synopsisShards"]>>();
 
   async get(catalog: CatalogDocument, key: TitleKey): Promise<string | null> {
-    const shardNumber = synopsisShardNumber(key, catalog.synopsisShards.count);
-    let shard = this.shards.get(shardNumber);
-    if (!shard) {
-      shard = this.loadShard(catalog, shardNumber).catch((error: unknown) => {
-        this.shards.delete(shardNumber);
-        throw error;
-      });
-      this.shards.set(shardNumber, shard);
+    const source = this.sources.get(catalog) ?? catalog.synopsisShards;
+    try {
+      return (await this.getShard(source, key)).synopses[key] ?? null;
+    } catch (error) {
+      if (!catalog.manifestUrl || source.format !== "gzip-json"
+        || !(error instanceof CatalogFileRequestError) || ![404, 410].includes(error.status)) throw error;
+
+      // A deployment can remove uncached files referenced by an already-open app.
+      // Refresh only synopsis metadata; leave the catalog, filters and user state alone.
+      const latest = this.sources.get(catalog);
+      const refreshed = latest && latest !== source ? latest : await this.refreshSource(catalog.manifestUrl);
+      this.sources.set(catalog, refreshed);
+      // Recompute the bucket: a newer snapshot may use a different shard count.
+      return (await this.getShard(refreshed, key)).synopses[key] ?? null;
     }
-    return (await shard).synopses[key] ?? null;
   }
 
-  private async loadShard(catalog: CatalogDocument, shardNumber: number): Promise<SynopsisShard> {
-    if (catalog.synopsisShards.format === "gzip-json") {
-      const descriptor = catalog.synopsisShards.files?.find((file) => file.number === shardNumber);
+  private refreshSource(manifestUrl: string): Promise<CatalogDocument["synopsisShards"]> {
+    let refresh = this.refreshes.get(manifestUrl);
+    if (!refresh) {
+      refresh = (async () => {
+        // Bypass HTTP and service-worker manifest caches during recovery.
+        const response = await fetch(manifestUrl, { cache: "no-store" });
+        if (!response.ok) throw new CatalogFileRequestError(response.status);
+        const manifest = resolveManifestFiles(parseCatalogManifest(await response.json()), manifestUrl);
+        return { count: manifest.synopsisShards.count, format: "gzip-json" as const,
+          files: manifest.synopsisShards.shards };
+      })().finally(() => this.refreshes.delete(manifestUrl));
+      this.refreshes.set(manifestUrl, refresh);
+    }
+    return refresh;
+  }
+
+  private getShard(source: CatalogDocument["synopsisShards"], key: TitleKey): Promise<SynopsisShard> {
+    const shardNumber = synopsisShardNumber(key, source.count);
+    const descriptor = source.files?.find(file => file.number === shardNumber);
+    const filename = source.format === "gzip-json" ? descriptor?.file
+      : source.pattern?.replace("{shard}", String(shardNumber));
+    if (!filename) return Promise.reject(new Error(`Synopsis shard ${shardNumber} is missing`));
+    const cacheKey = JSON.stringify([source.format, appAssetUrl(filename), descriptor?.sha256]);
+    let shard = this.shards.get(cacheKey);
+    if (!shard) {
+      shard = this.loadShard(source, shardNumber).catch((error: unknown) => {
+        this.shards.delete(cacheKey);
+        throw error;
+      });
+      this.shards.set(cacheKey, shard);
+    }
+    return shard;
+  }
+
+  private async loadShard(source: CatalogDocument["synopsisShards"], shardNumber: number): Promise<SynopsisShard> {
+    if (source.format === "gzip-json") {
+      const descriptor = source.files?.find((file) => file.number === shardNumber);
       if (!descriptor) throw new Error(`Synopsis shard ${shardNumber} is missing from the manifest`);
       return parseSynopsisShard(await fetchGzipJson(descriptor.file, descriptor.sha256));
     }
 
-    const pattern = catalog.synopsisShards.pattern;
+    const pattern = source.pattern;
     if (!pattern) throw new Error("Synopsis shard pattern is missing");
     const filename = pattern.replace("{shard}", String(shardNumber));
     const response = await fetch(appAssetUrl(filename));

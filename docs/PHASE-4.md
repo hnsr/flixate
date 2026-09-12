@@ -65,3 +65,25 @@ edits from an old client. Cross-account collaboration remains out of scope.
 Real Google authorization was already validated during S4. This phase reuses that
 connection unchanged; new watchlist round trips are covered by the automated Drive
 adapter tests, not claimed as a new manual two-device Google test.
+
+## Synopsis recovery follow-up — 2026-09-12
+
+Nightly deployments replace content-addressed synopsis files. An app left open on
+an older catalog could request a removed file and display a misleading offline
+message. Synopsis loading now recovers from HTTP 404/410 by fetching a freshly
+validated manifest and retrying once against its current shard layout, including
+when the number of shards has changed. Only synopsis metadata changes: the visible
+catalog, filters, seen state, watchlists, and saved last-known-good core manifest
+are left alone.
+
+Recovery requests bypass HTTP and service-worker manifest caching. Concurrent
+loads share in-flight requests, and shard caching is keyed by file/format/checksum
+rather than bucket number alone. Existing cached synopses remain usable offline;
+integrity checks are not bypassed. Failed loads offer **Retry synopsis**, and closing
+then reopening details retries too. A title absent from the current synopsis shard
+shows the normal unavailable-synopsis message.
+
+Regression coverage includes real gzip/checksum decoding, removed files, changed
+shard counts, concurrent requests, offline cached reads, failed-refresh retries,
+invalid manifests, and browser-level recovery without a page reload. The full
+suite now has 99 unit/integration tests and six browser tests.
