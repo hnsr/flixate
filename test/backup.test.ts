@@ -1,9 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { createBackup, parseBackup, previewImport } from "../src/domain/backup.js";
+import { createBackup, normalizeFilterSettings, parseBackup, previewImport } from "../src/domain/backup.js";
 import { DEFAULT_FILTERS } from "../src/domain/catalog.js";
 import type { UserStateV1 } from "../src/domain/user-state.js";
 
 describe("backup files", () => {
+  it("defaults older settings to no exclusions and sanitizes contradictory selections", () => {
+    expect(normalizeFilterSettings({ genres: ["Drama"] }).excludedGenres).toEqual([]);
+    expect(normalizeFilterSettings({ excludedGenres: "Documentary" }).excludedGenres).toEqual([]);
+    expect(normalizeFilterSettings({ genres: ["Drama", "Documentary"],
+      excludedGenres: ["Documentary", null, "", "Documentary", " Animation "] }))
+      .toMatchObject({ genres: ["Drama"], excludedGenres: ["Documentary", "Animation"] });
+  });
+
+  it("preserves exclusions when exporting and importing filters", () => {
+    const backup = createBackup({ version: 1, titles: {} }, {
+      ...DEFAULT_FILTERS, genres: ["Drama"], excludedGenres: ["Documentary", "Animation"],
+    });
+    expect(parseBackup(JSON.stringify(backup)).settings).toEqual(backup.settings);
+  });
+
   it("round-trips a versioned backup", () => {
     const state: UserStateV1 = {
       version: 1,

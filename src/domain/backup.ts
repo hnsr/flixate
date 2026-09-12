@@ -52,6 +52,7 @@ export function normalizeFilterSettings(value: unknown): FilterSettings {
   const sort = ["rating", "votes", "year", "title"].includes(candidate.sort ?? "")
     ? candidate.sort as FilterSettings["sort"]
     : DEFAULT_FILTERS.sort;
+  const excludedGenres = normalizeGenres(candidate.excludedGenres);
 
   return {
     query: typeof candidate.query === "string" ? candidate.query : "",
@@ -62,12 +63,19 @@ export function normalizeFilterSettings(value: unknown): FilterSettings {
     minimumVotes: typeof candidate.minimumVotes === "number" ? candidate.minimumVotes : 0,
     minimumYear: validYear(candidate.minimumYear),
     maximumYear: validYear(candidate.maximumYear),
-    genres: Array.isArray(candidate.genres)
-      ? candidate.genres.filter((genre): genre is string => typeof genre === "string")
-      : [],
+    // Exclusions win when imported/stored settings contain contradictory selections.
+    genres: normalizeGenres(candidate.genres).filter(genre => !excludedGenres.includes(genre)),
+    excludedGenres,
     genreMode,
     sort,
   };
+}
+
+function normalizeGenres(value: unknown): string[] {
+  return Array.isArray(value)
+    ? [...new Set(value.filter((genre): genre is string => typeof genre === "string")
+      .map(genre => genre.trim()).filter(Boolean))]
+    : [];
 }
 
 function validYear(value: unknown): number | null {

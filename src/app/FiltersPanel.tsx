@@ -53,6 +53,7 @@ export const FiltersPanel = memo(function FiltersPanel({ settings, genres, onCha
     settings.minimumVotes > 0,
     settings.minimumYear !== null || settings.maximumYear !== null,
     settings.genres.length > 0,
+    settings.excludedGenres.length > 0,
   ].filter(Boolean).length;
 
   return (
@@ -181,10 +182,11 @@ export const FiltersPanel = memo(function FiltersPanel({ settings, genres, onCha
                 type="button"
                 className={selected ? "genre-option is-active" : "genre-option"}
                 aria-pressed={selected}
-                onClick={() => update(
-                  "genres",
-                  selected ? settings.genres.filter((item) => item !== genre) : [...settings.genres, genre],
-                )}
+                onClick={() => onChange({
+                  ...settings,
+                  genres: selected ? settings.genres.filter(item => item !== genre) : [...settings.genres, genre],
+                  excludedGenres: settings.excludedGenres.filter(item => item !== genre),
+                })}
               >
                 {genre === "Documentary" && <span aria-hidden="true">●</span>}
                 {genre}
@@ -193,6 +195,28 @@ export const FiltersPanel = memo(function FiltersPanel({ settings, genres, onCha
           })}
         </div>
       </fieldset>
+      <details className="filter-group genre-filter excluded-genres">
+        <summary>Exclude genres{settings.excludedGenres.length > 0 ? ` · ${settings.excludedGenres.length}` : ""}</summary>
+        <p className="field-note">Hide titles with any of these genres, even when they match included genres.</p>
+        <div className="genre-options">
+          {genres.map(genre => {
+            const selected = settings.excludedGenres.includes(genre);
+            return (
+              <button key={genre} type="button"
+                className={selected ? "genre-option is-active" : "genre-option"}
+                aria-label={`Exclude ${genre}`} aria-pressed={selected}
+                onClick={() => onChange({
+                  ...settings,
+                  excludedGenres: selected ? settings.excludedGenres.filter(item => item !== genre)
+                    : [...settings.excludedGenres, genre],
+                  genres: settings.genres.filter(item => item !== genre),
+                })}>
+                {genre}
+              </button>
+            );
+          })}
+        </div>
+      </details>
     </aside>
   );
 });

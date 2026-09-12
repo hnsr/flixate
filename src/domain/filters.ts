@@ -88,10 +88,11 @@ export function filterCatalogIndex(
     if (settings.minimumYear != null && (title.releaseYear ?? -1) < settings.minimumYear) continue;
     if (settings.maximumYear != null && (title.releaseYear ?? Infinity) > settings.maximumYear) continue;
 
-    if (settings.genres.length > 0) {
+    if (settings.genres.length > 0 || settings.excludedGenres.length > 0) {
       const genres = genresForTitle(title);
+      if (settings.excludedGenres.some(genre => genres.includes(genre))) continue;
       const matches = settings.genres.map((genre) => genres.includes(genre));
-      if (settings.genreMode === "all" ? !matches.every(Boolean) : !matches.some(Boolean)) {
+      if (matches.length > 0 && (settings.genreMode === "all" ? !matches.every(Boolean) : !matches.some(Boolean))) {
         continue;
       }
     }

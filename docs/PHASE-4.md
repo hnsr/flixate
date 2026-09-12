@@ -87,3 +87,25 @@ Regression coverage includes real gzip/checksum decoding, removed files, changed
 shard counts, concurrent requests, offline cached reads, failed-refresh retries,
 invalid manifests, and browser-level recovery without a page reload. The full
 suite now has 99 unit/integration tests and six browser tests.
+
+## Genre exclusions follow-up
+
+At the user's request, **Exclude genres** now appears below the existing genre
+filter, collapsed by default. The collapsed summary shows the number of excluded
+genres. A title matching any excluded genre is hidden even if its other genres
+match the included Any/All filter. Selecting a genre for inclusion removes its
+exclusion, and excluding it removes its inclusion. Titles with missing or unknown
+genre metadata are not hidden by exclusions alone.
+
+Exclusions apply through the shared filter pipeline before the discovery limit
+and when filtering an individual watchlist. Reset clears them. They are saved
+alongside other browser-local filters, included in named filter presets and JSON
+backups, but are not synchronized to Drive. Older settings/presets/backups default
+to an empty exclusion list. Imported contradictions are resolved in favor of
+exclusion, with duplicates and malformed list entries removed. No catalog format
+change or new crawl is needed.
+
+Verification: 105 unit/integration tests and seven browser tests pass, including
+Any/All precedence, movie/TV genre mapping, unknown genres, mutual exclusion,
+reload persistence, presets, export/import, mobile layout, and reset. Production
+build/typecheck also passes.

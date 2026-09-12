@@ -15,6 +15,26 @@ const titles: CoreTitle[] = [
 ];
 
 describe("catalog filters", () => {
+  it("excludes any matching genre, including combined movie/TV genre labels", () => {
+    expect(filterAndSortTitles(titles, {
+      ...DEFAULT_FILTERS, excludedGenres: ["Documentary", "Action"],
+    }, new Set()).map(title => title.key)).toEqual(["movie:3"]);
+  });
+
+  it.each(["any", "all"] as const)("exclusion overrides a matching %s inclusion", genreMode => {
+    const mixed = [...titles, { ...titles[0]!, genreIds: [99, 18, 28], key: "movie:5" as TitleKey }];
+    expect(filterAndSortTitles(mixed, {
+      ...DEFAULT_FILTERS, genres: ["Drama", "Action"], genreMode, excludedGenres: ["Documentary", "Animation"],
+    }, new Set()).map(title => title.key)).toEqual(genreMode === "any"
+      ? ["tv:2", "movie:4", "movie:3"] : ["tv:2", "movie:4"]);
+  });
+
+  it("does not exclude titles whose genres are missing or unknown", () => {
+    const unknown = { ...titles[0]!, genreIds: [999999] };
+    expect(filterAndSortTitles([unknown], { ...DEFAULT_FILTERS, excludedGenres: ["Documentary"] }, new Set()))
+      .toEqual([unknown]);
+  });
+
   it("applies inclusive year bounds to movies and shows and excludes unknown years only when bounded", () => {
     const withUnknown = [...titles, { ...titles[0]!, key: "movie:5" as TitleKey, releaseYear: undefined }];
     expect(filterAndSortTitles(withUnknown, DEFAULT_FILTERS, new Set())).toHaveLength(5);

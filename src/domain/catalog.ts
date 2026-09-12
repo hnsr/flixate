@@ -51,6 +51,7 @@ export type FilterSettings = {
   minimumYear: number | null;
   maximumYear: number | null;
   genres: string[];
+  excludedGenres: string[];
   genreMode: GenreMode;
   sort: SortMode;
 };
@@ -65,6 +66,7 @@ export const DEFAULT_FILTERS: FilterSettings = {
   minimumYear: null,
   maximumYear: null,
   genres: [],
+  excludedGenres: [],
   genreMode: "any",
   sort: "rating",
 };

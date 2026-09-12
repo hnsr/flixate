@@ -467,6 +467,17 @@ select {
   gap: 7px;
 }
 
+.excluded-genres summary {
+  cursor: pointer;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.excluded-genres .field-note {
+  margin: 12px 0;
+}
+
 .genre-option {
   display: inline-flex;
   align-items: center;
