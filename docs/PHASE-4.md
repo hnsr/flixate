@@ -109,3 +109,21 @@ Verification: 105 unit/integration tests and seven browser tests pass, including
 Any/All precedence, movie/TV genre mapping, unknown genres, mutual exclusion,
 reload persistence, presets, export/import, mobile layout, and reset. Production
 build/typecheck also passes.
+
+## Continuous list scrolling follow-up
+
+Lists above 60 titles previously used a fixed-height inner scrollbar, making the
+results look truncated next to an expanded filter panel. They now use window-based
+virtualization and normal page scrolling: only nearby cards render, but the full
+list occupies its proper document height. The 100-title discovery limit is unchanged.
+
+The filter panel also scrolls normally instead of pinning a panel taller than the
+viewport. List offsets are remeasured after responsive and filter-layout changes;
+card resizing is handled by the virtualizer's resize observer rather than resetting
+all row measurements whenever a card mounts or expands.
+
+The regression browser test reaches the last title and its controls with exclusions
+expanded, opens a long synopsis without footer overlap, then repeats navigation on
+mobile after changing the filter layout. It also checks that off-screen titles
+remain virtualized. Full verification: 105 unit/integration tests and eight browser
+tests, plus the production build/typecheck and privacy audit.

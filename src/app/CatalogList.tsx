@@ -1,5 +1,5 @@
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { memo, useCallback, useRef } from "react";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { memo, useCallback, useLayoutEffect, useRef, useState } from "react";
 import { SynopsisRepository } from "../data/catalog.js";
 import type { CatalogDocument, CoreTitle, TitleKey } from "../domain/catalog.js";
 import { CatalogCard } from "./CatalogCard.js";
@@ -15,22 +15,46 @@ type CatalogListProps = {
 };
 
 export const CatalogList = memo(function CatalogList(props: CatalogListProps): React.JSX.Element {
-  const scrollElement = useRef<HTMLDivElement>(null);
+  const listElement = useRef<HTMLDivElement>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
+  const isVirtual = props.titles.length > 60;
   const synopsisRepository = useRef(new SynopsisRepository()).current;
-  const getScrollElement = useCallback(() => scrollElement.current, []);
   const estimateSize = useCallback(() => 226, []);
   const getItemKey = useCallback(
     (index: number) => props.titles[index]?.key ?? index,
     [props.titles],
   );
-  const virtualizer = useVirtualizer({
+  const virtualizer = useWindowVirtualizer({
     count: props.titles.length,
-    getScrollElement,
+    enabled: isVirtual,
+    scrollMargin,
     estimateSize,
     overscan: 5,
     getItemKey,
+    useAnimationFrameWithResizeObserver: true,
   });
-  const measureList = useCallback(() => virtualizer.measure(), [virtualizer]);
+
+  useLayoutEffect(() => {
+    if (!isVirtual || !listElement.current) return;
+    const list = listElement.current;
+    const measureOffset = () => setScrollMargin(Math.round(list.getBoundingClientRect().top + window.scrollY));
+    measureOffset();
+    // Filters, saved-filter controls and responsive wrapping can all move the
+    // list down the document without resizing an individual title card.
+    let frame = 0;
+    const scheduleMeasurement = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measureOffset);
+    };
+    const observer = new ResizeObserver(scheduleMeasurement);
+    for (let parent: HTMLElement | null = list; parent; parent = parent.parentElement) observer.observe(parent);
+    window.addEventListener("resize", scheduleMeasurement);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", scheduleMeasurement);
+    };
+  }, [isVirtual]);
 
   if (props.titles.length === 0) {
     return (
@@ -62,7 +86,7 @@ export const CatalogList = memo(function CatalogList(props: CatalogListProps): R
   }
 
   return (
-    <div className="catalog-scroll" ref={scrollElement}>
+    <div className="catalog-virtual" ref={listElement}>
       <div className="virtual-list" style={{ height: virtualizer.getTotalSize() }}>
         {virtualizer.getVirtualItems().map((item) => {
           const title = props.titles[item.index];
@@ -73,7 +97,7 @@ export const CatalogList = memo(function CatalogList(props: CatalogListProps): R
               key={title.key}
               data-index={item.index}
               ref={virtualizer.measureElement}
-              style={{ transform: `translateY(${item.start}px)` }}
+              style={{ transform: `translateY(${item.start - scrollMargin}px)` }}
             >
               <CatalogCard
                 catalog={props.catalog}
@@ -81,7 +105,6 @@ export const CatalogList = memo(function CatalogList(props: CatalogListProps): R
                 seen={props.seenKeys.has(title.key)}
                 synopsisRepository={synopsisRepository}
                 onToggleSeen={() => props.onToggleSeen(title.key)}
-                onSizeChange={measureList}
                 watchlists={props.watchlists}
                 onMembershipChange={(id, member) => props.onMembershipChange?.(id, title.key, member)}
               />

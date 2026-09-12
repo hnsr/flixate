@@ -25,7 +25,8 @@
 
 html {
   background: var(--bg);
-  scroll-behavior: smooth;
+  /* Virtualized row-size corrections must not become animated scrolls. */
+  scroll-behavior: auto;
 }
 
 body {
@@ -545,12 +546,8 @@ select {
   padding-top: 14px;
 }
 
-.catalog-scroll {
-  height: min(74vh, 900px);
-  min-height: 560px;
+.catalog-virtual {
   margin-top: 14px;
-  overflow-y: auto;
-  scrollbar-gutter: stable;
 }
 
 .virtual-list {
@@ -864,8 +861,6 @@ footer p {
 
 .filter-container {
   min-width: 0;
-  position: sticky;
-  top: 96px;
 }
 
 .mobile-filter-toggle {
@@ -995,9 +990,6 @@ footer p {
 }
 
 @media (max-width: 980px) {
-  .filter-container {
-    position: static;
-  }
   .mobile-filter-toggle {
     display: inline-flex;
     margin-bottom: 18px;
