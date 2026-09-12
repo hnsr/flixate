@@ -4,9 +4,10 @@ Implemented on 2026-09-05. The scope was committed separately before implementat
 
 ## Delivered behavior
 
-- Discovery shows at most 100 titles after search, filters, and sorting run against
+- Discovery initially shows 100 titles after search, filters, and sorting run against
   the full catalog. Displayed and total matching counts are separate. Hiding a
-  newly seen title refills the shortlist from the next match.
+  newly seen title refills the shortlist from the next match. A later follow-up
+  adds **Show 100 more** to continue beyond the initial batch (see below).
 - Release/first-air year has optional inclusive lower and upper bounds. Unknown
   years remain visible without bounds; applying a bound excludes them. Inverted
   bounds show an explanation and no results.
@@ -154,3 +155,19 @@ search in a new tab with the full display title URL-encoded as the `q` parameter
 This is a search shortcut, not a verified IMDb title mapping, and needs no catalog
 refresh, IMDb import, or new API. Browser coverage checks movies and series,
 punctuation/non-ASCII titles, a separate tab, and mobile page width.
+
+## Incremental discovery batches
+
+The hard 100-title cap is replaced with **Show 100 more** below the results. Each
+click appends up to 100 matching titles in the selected sort order; the final
+button names the actual remaining count and disappears once all matches are shown.
+The heading continues to show displayed and total matching counts. Search and all
+filters still run against the full catalog before batching, and window-based
+virtualization keeps off-screen cards out of the DOM. This is incremental display,
+not another catalog download; posters and synopses remain lazy-loaded.
+
+Search, filter, sort, and selected-watchlist changes reset discovery to the first
+100 matches. Seen edits instead refill the current expanded batch without resetting
+it. Reload also starts with 100; batch size is session UI state, not a saved filter,
+backup field, or Drive value. Individual watchlists retain their uncapped browsing.
+No catalog regeneration or new service is needed.

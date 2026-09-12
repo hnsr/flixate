@@ -8,8 +8,10 @@ hidden Google Drive app-data folder; Flixate has no application server or databa
 
 Open the live app at <https://hnsr.github.io/flixate/>.
 
-Discovery shows the first 100 matches after searching, filtering, and sorting the
-whole catalog. Narrow by score, genre, type, or release year, and save favorite
+Discovery starts with the first 100 matches after searching, filtering, and sorting
+the whole catalog. **Show 100 more** extends the list until all matches are available;
+changing search, filters, or sort starts a fresh batch. Narrow by score, genre,
+type, or release year, and save favorite
 filter combinations in this browser. Use **Manage watchlists** to create personal
 lists and **Lists** on a title to add it to one or more of them. Individual lists
 are not limited to 100 titles.

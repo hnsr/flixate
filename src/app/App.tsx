@@ -114,6 +114,8 @@ export function App(): React.JSX.Element {
   const [syncPanelOpen, setSyncPanelOpen] = useState(false);
   const [selectedList, setSelectedList] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [discoveryCount, setDiscoveryCount] = useState(100);
+  useEffect(() => setDiscoveryCount(100), [filters, selectedList]);
 
   const commitSyncState = useCallback((next: SyncStateV1) => {
     syncStateRef.current = next;
@@ -217,8 +219,9 @@ export function App(): React.JSX.Element {
   const matchingTitles = useMemo(() => activeList
     ? titles.filter(title => activeList.list.members[title.key]?.value)
     : titles, [titles, activeList]);
-  const displayedTitles = useMemo(() => activeList ? matchingTitles : matchingTitles.slice(0, 100),
-    [activeList, matchingTitles]);
+  const displayedTitles = useMemo(() => activeList ? matchingTitles : matchingTitles.slice(0, discoveryCount),
+    [activeList, matchingTitles, discoveryCount]);
+  const remainingTitles = matchingTitles.length - displayedTitles.length;
   const catalogKeys = useMemo(() => new Set(catalog?.titles.map(title => title.key)), [catalog]);
   const unavailableMembers = activeList
     ? Object.entries(activeList.list.members).filter(([key, field]) => field?.value && !catalogKeys.has(key as TitleKey))
@@ -424,6 +427,15 @@ export function App(): React.JSX.Element {
               watchlists={watchlists}
               onMembershipChange={(id, key, member) => editList(id, { key, member })}
             />
+            {!activeList && remainingTitles > 0 && (
+              <div className="load-more-titles">
+                <button type="button" className="secondary-button"
+                  onClick={() => setDiscoveryCount(count => count + 100)}>
+                  Show {Math.min(100, remainingTitles)} more
+                </button>
+                <p className="field-note">{remainingTitles.toLocaleString("en-US")} more matches</p>
+              </div>
+            )}
             {unavailableMembers.length > 0 && (
               <details className="unavailable-members">
                 <summary>{unavailableMembers.length} saved titles outside the current catalog</summary>

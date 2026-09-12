@@ -550,6 +550,18 @@ select {
   margin-top: 14px;
 }
 
+.load-more-titles {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 0 8px;
+}
+
+.load-more-titles .field-note {
+  margin: 0;
+}
+
 .virtual-list {
   position: relative;
   width: 100%;

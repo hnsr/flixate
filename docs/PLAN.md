@@ -546,13 +546,15 @@ behavior, versioned watchlist migration, and automated verification. The promote
 cross-device sync track was completed before this phase.
 
 - Add release/first-air year filtering with optional lower and upper bounds.
-- Limit the catalog discovery shortlist to 100 titles, including on initial load.
+- Start the catalog discovery shortlist with 100 titles, including on initial load.
   Apply search, filters, and the selected sort to the full catalog before taking
   the first 100 matches, so every title remains discoverable. Show the displayed
   count separately from the total matches (for example, "Showing 100 of 12,430
-  matches"). Refill the shortlist from the remaining matches when a seen action
-  hides a title. This is a display limit, not a smaller catalog or a limit on saved
-  watchlist membership.
+  matches"). A **Show 100 more** button extends the list in batches until all matches
+  are shown, with a smaller final batch where necessary. Reset the batch when search,
+  filters, sort, or the selected watchlist changes. Seen actions refill the current
+  batch without resetting it. Keep window-based virtualization and lazy synopsis/
+  poster loading. Saved watchlist browsing remains uncapped.
 - Add multiple named personal watchlists: create, rename, and delete lists; add or
   remove a title from one or more lists; and browse an individual list. List
   membership is independent of seen state, and deleting a list must not erase seen
