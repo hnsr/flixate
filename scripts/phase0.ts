@@ -61,7 +61,7 @@ async function main(): Promise<void> {
   const titles = new Map<string, DiscoveredTitle>();
   const discoveryReport: Record<string, unknown> = {};
 
-  console.log(`Phase 0 ${options.sample ? "sample" : "full"} discovery: US + NL`);
+  console.log(`Phase 0 ${options.sample ? "sample" : "full"} discovery: ${REGIONS.join(" + ")}`);
   console.log(`Dated range: ${range.start} through ${range.end}`);
 
   for (const region of REGIONS) {

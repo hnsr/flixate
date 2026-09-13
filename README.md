@@ -2,7 +2,7 @@
 
 Flixate is a local-first PWA for finding movies and series worth watching. The app
 has a representative fixture for everyday development and a production pipeline
-for the complete generated US+NL streaming catalog. Seen history and named watchlists are stored locally
+for the generated US+NL+UK streaming catalog. Seen history and named watchlists are stored locally
 by default and can optionally synchronize between devices through the user's own
 hidden Google Drive app-data folder; Flixate has no application server or database.
 

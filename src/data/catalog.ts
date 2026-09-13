@@ -99,7 +99,7 @@ async function activateManifest(
     snapshotId: manifest.snapshotId,
     manifestUrl,
     createdAt: manifest.createdAt,
-    regions: ["US", "NL"],
+    regions: manifest.regions,
     image: manifest.image,
     synopsisShards: {
       count: manifest.synopsisShards.count,

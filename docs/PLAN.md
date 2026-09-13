@@ -1,10 +1,13 @@
 # Flixate product and architecture plan
 
-Status: revised proposal, researched through 2026-08-31
+Status: implemented plan; UK coverage added 2026-09-13 (original research through 2026-08-31)
+
+Historical Phase 0–3 milestones and size/timing measurements below describe the
+original US+NL catalog. Current discovery adds UK (`GB`) as a third region.
 
 Scope clarification: the user wants to discover titles that are streamable
 somewhere, but does not need to know the qualifying service. Version 1 uses the
-combined US and Netherlands streaming catalogs as a deliberately simple, broad,
+combined US, Netherlands, and UK streaming catalogs as a deliberately simple, broad,
 personally relevant approximation rather than crawling every country.
 The MVP display metadata is title, release year, movie/show type, genres, poster,
 short synopsis, quality score, and source link. Version 1 uses TMDB's 0–10 user
@@ -17,11 +20,11 @@ are out of scope.
 - **TMDB (The Movie Database):** an online movie/TV database with a developer API.
   Flixate uses it for titles, release years, movie/show type, genres, quality
   scores, posters, synopses, and determining whether something is streamable in
-  the US or Netherlands.
+  the US, Netherlands, or UK.
 - **JustWatch:** a service that tracks where movies and shows are available to
   stream. TMDB exposes availability data supplied by JustWatch, so Flixate can use
   it through TMDB without integrating every streaming service separately. Flixate
-  only keeps the answer “streamable in the US or Netherlands,” not the service or
+  only keeps the answer “streamable in the US, Netherlands, or UK,” not the service or
   qualifying country.
 - **IMDb (Internet Movie Database):** another well-known 0–10 rating source. It is
   deliberately deferred until after the MVP because using it would require mapping
@@ -38,7 +41,7 @@ are out of scope.
 
 Build Flixate as a local-first progressive web app (PWA) hosted on GitHub Pages.
 Use GitHub Actions to periodically assemble and deploy a static catalog containing
-titles that are streamable in the US or Netherlands. Do not retain or show which
+titles that are streamable in the US, Netherlands, or UK. Do not retain or show which
 country or service caused a title to qualify.
 Keep the user's small `seen` map in versioned browser `localStorage`, with JSON
 export/import as the first backup and transfer mechanism.
@@ -82,24 +85,24 @@ separate rating account is required by an app user.
 "Every title available on streaming somewhere" cannot be guaranteed literally by
 any free data source. Streaming availability changes constantly, catalogs differ
 by country, and there is no free authoritative global registry. Combining the broad
-US catalog with the personally relevant Netherlands catalog should cover most likely
-interests, but it does not contain every title streamable elsewhere and must not be
+US catalog with the personally relevant Netherlands and UK catalogs broadens coverage,
+but it does not contain every title streamable elsewhere and must not be
 described as worldwide coverage.
 
 For Flixate, define the promise as:
 
 > Every top-level movie and series reported by TMDB/JustWatch as available through
-> subscription, ad-supported, or free streaming in the US or Netherlands, as of the
+> subscription, ad-supported, or free streaming in the US, Netherlands, or UK, as of the
 > catalog timestamp.
 
 The qualifying region and service are ingestion details only. Once a title qualifies
-on one US or Netherlands service, Flixate keeps the title but discards the
+on one US, Netherlands, or UK service, Flixate keeps the title but discards the
 availability details. Rent and purchase offers do not count as streaming by default.
 Episodes should not be separate catalog entries; their parent series should be.
 
 TMDB is the practical free source. Its watch-provider data is supplied by
-JustWatch and is country-specific. Version 1 queries only `watch_region=US` and
-`watch_region=NL`, which removes most of the cost and complexity of a worldwide
+JustWatch and is country-specific. Version 1 queries `watch_region=US`,
+`watch_region=NL`, and `watch_region=GB` (UK), which removes most of the cost and complexity of a worldwide
 regional union but knowingly misses titles available exclusively elsewhere. The
 builder does not need to enumerate providers, call the per-title watch-provider
 endpoint, preserve offers, or keep provider data fresh. JustWatch attribution
@@ -112,7 +115,7 @@ and deep-link advantages are no longer useful for this product.
  scheduled/manual catalog workflow          push/manual app workflow
                  |                                  |
          TMDB + JustWatch                 latest catalog artifact
-         US + NL title union                        |
+       US + NL + UK title union                     |
                  |                         validate snapshot hashes
         validate + compact                         |
                  |                                  |
@@ -148,7 +151,7 @@ Use TMDB for:
 - movie and series IDs;
 - title, movie/show type, and genre IDs;
 - user score and vote count;
-- the boolean fact that a title is streamable in the US or Netherlands.
+- the boolean fact that a title is streamable in the US, Netherlands, or UK.
 
 Keep TMDB's `vote_average` and `vote_count` directly from discovery. Present the
 value explicitly as a TMDB score, never as IMDb or Rotten Tomatoes. A zero-vote
@@ -233,7 +236,7 @@ mix TMDB and Rotten Tomatoes values as though they were the same rating system.
    and generate the core catalog containing year and poster path. Generate
    deterministic synopsis shards separately.
 7. Validate per-region and union counts, referential integrity, duplicate IDs,
-   core/shard sizes, metadata and score coverage, and a sample of US and Netherlands
+   core/shard sizes, metadata and score coverage, and a sample of US, Netherlands, and UK
    discovery membership before deployment.
 8. Deploy through the official Pages artifact flow. Do not commit generated catalog
    files to normal Git history.
@@ -246,7 +249,7 @@ and extend the current Pages snapshot.
 
 Use one simple nightly schedule:
 
-- rebuild the US+NL union from discovery, adding newly streamable titles and removing
+- rebuild the US+NL+UK union from discovery, adding newly streamable titles and removing
   titles no longer reported in either region;
 - after every successful run: publish only if validation passes, retaining the last
   good snapshot otherwise.
@@ -266,7 +269,7 @@ show a stale-catalog warning and link the owner to the manual workflow instructi
 Do not create fake keep-alive commits merely to evade that policy.
 
 The UI must show the catalog timestamp. It does not need availability details or a
-provider-specific staleness model; the only relevant age is the US+NL union snapshot
+provider-specific staleness model; the only relevant age is the US+NL+UK union snapshot
 date.
 
 Action secrets should contain the TMDB read token. It may not appear in built
@@ -298,7 +301,7 @@ Suggested manifest fields:
 - schema version;
 - snapshot ID and creation timestamp;
 - source timestamps;
-- title, movie, and series counts plus the source regions (`US` and `NL`);
+- title, movie, and series counts plus the source regions (`US`, `NL`, and `GB`);
 - coverage/bootstrap status;
 - catalog URL, hash, and byte size;
 - synopsis shard scheme, URLs, hashes, and byte sizes;
@@ -415,7 +418,7 @@ Useful defaults:
 
 - hide seen titles;
 - catalog eligibility means subscription, free, or ad-supported availability in the
-  US or Netherlands;
+  US, Netherlands, or UK;
 - rent and buy alone do not make a title eligible;
 - hide adult content;
 - do not hide unrated titles unless explicitly requested.
@@ -430,7 +433,7 @@ Useful defaults:
 - personal rating and notes;
 - suggestions based on genres, score, and unseen state;
 - shared household state across different Google accounts;
-- optional additional watch regions or a worldwide union if US+NL coverage proves
+- optional additional watch regions or a worldwide union if US+NL+UK coverage proves
   too limiting;
 - an optional IMDb score/link adapter after MVP, subject to mapping cost,
   attribution, and redistribution terms;
@@ -602,7 +605,7 @@ server or database.
 
 ## Acceptance criteria for version 1
 
-- A user can browse the defined US+NL streaming union and see the snapshot date.
+- A user can browse the defined US+NL+UK streaming union and see the snapshot date.
 - Each title shows its release/first-air year and a poster or intentional placeholder.
 - Expanding a title shows its TMDB synopsis or an intentional unavailable state
   without loading the complete synopsis dataset up front.
@@ -627,9 +630,9 @@ server or database.
 
 | Risk | Mitigation |
 | --- | --- |
-| US+NL discovery misses titles available exclusively elsewhere | Describe coverage as US+NL, measure whether it is useful in practice, and add regions later only if the omissions matter |
+| US+NL+UK discovery misses titles available exclusively elsewhere | Describe the three-region coverage honestly and add regions later only if the omissions matter |
 | Initial TMDB crawl is too slow or unfriendly to the API | Throttle, back off, partition, cache responses, and checkpoint progress |
-| Streamable/not-streamable membership becomes stale | Weekly clean US+NL rebuild and a visible snapshot date |
+| Streamable/not-streamable membership becomes stale | Nightly clean US+NL+UK rebuild and a visible snapshot date |
 | Low-vote TMDB scores are noisy or diverge from IMDb | Show vote count, identify fewer than 50 votes as low-confidence, and support a minimum-votes filter |
 | Poster CDN requests make scrolling slow or waste bandwidth | Virtualize results, request a modest image size, lazy-load images, and use a bounded runtime cache plus placeholders |
 | Synopses make the initial catalog too large | Keep them in deterministic static shards loaded only when title details are expanded |

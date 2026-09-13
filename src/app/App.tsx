@@ -319,6 +319,9 @@ export function App(): React.JSX.Element {
   const catalogAgeDays = Math.floor(
     (Date.now() - new Date(catalogState.catalog.createdAt).getTime()) / (24 * 60 * 60 * 1000),
   );
+  const regionLabel = catalogState.catalog.regions.map(region => region === "GB" ? "UK" : region).join(" + ");
+  const regionNames = catalogState.catalog.regions.map(region => ({ US: "US", NL: "Netherlands", GB: "UK" })[region]);
+  const coverageLabel = new Intl.ListFormat("en", { type: "disjunction" }).format(regionNames);
   const freshnessWarning = catalogState.catalog.loadWarning
     ?? (!catalogState.catalog.fixture && catalogAgeDays > 14
       ? "This catalog is older than two weeks. The scheduled refresh may need attention."
@@ -334,9 +337,9 @@ export function App(): React.JSX.Element {
         <div className="topbar-actions">
           <span
             className="fixture-badge"
-            title={catalogState.catalog.fixture ? "Development uses a representative local catalog" : "Validated US+NL catalog snapshot"}
+            title={catalogState.catalog.fixture ? "Development uses a representative local catalog" : `Validated ${regionLabel} catalog snapshot`}
           >
-            {catalogState.catalog.fixture ? "Development fixture" : "US + NL catalog"}
+            {catalogState.catalog.fixture ? "Development fixture" : `${regionLabel} catalog`}
           </span>
           <SyncControls
             metadata={syncMetadata}
@@ -374,7 +377,7 @@ export function App(): React.JSX.Element {
               <span>{catalogState.catalog.fixture ? "fixture titles" : "streaming titles"}</span>
             </div>
             <div><strong>{seenKeys.size}</strong><span>marked seen</span></div>
-            <div><strong>US + NL</strong><span>availability union</span></div>
+            <div><strong>{regionLabel}</strong><span>availability union</span></div>
           </div>
         </section>
 
@@ -439,7 +442,7 @@ export function App(): React.JSX.Element {
             {unavailableMembers.length > 0 && (
               <details className="unavailable-members">
                 <summary>{unavailableMembers.length} saved titles outside the current catalog</summary>
-                <p>These titles stay in your list even if they no longer appear in the US + NL catalog.</p>
+                <p>These titles stay in your list even if they no longer appear in the {regionLabel} catalog.</p>
                 {unavailableMembers.map(([key]) => (
                   <div key={key}>
                     <a href={`https://www.themoviedb.org/${key.replace(":", "/")}`} target="_blank" rel="noreferrer">
@@ -460,7 +463,7 @@ export function App(): React.JSX.Element {
         <div>
           <strong>Flixate</strong>
           <p>A personal, local-first watch finder. Optional sync stores seen history and watchlists in your own private Google Drive app data.</p>
-          <p>Coverage includes subscription, free, and ad-supported streaming in the US or Netherlands.
+          <p>Coverage includes subscription, free, and ad-supported streaming in the {coverageLabel}.
             Rental/purchase-only titles are excluded. Availability can change, and a series may qualify with only some seasons available.</p>
           <nav className="legal-links" aria-label="Legal information">
             <a href={`${import.meta.env.BASE_URL}privacy.html`}>Privacy</a>

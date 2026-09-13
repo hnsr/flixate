@@ -1,3 +1,5 @@
+import type { Region } from "../catalog/types.js";
+
 export type TitleKey = `movie:${number}` | `tv:${number}`;
 export type MediaFilter = "all" | "movie" | "show";
 export type SeenFilter = "hide" | "all" | "only";
@@ -21,7 +23,7 @@ export type CatalogDocument = {
   schemaVersion: 1;
   fixture: boolean;
   createdAt: string;
-  regions: ["US", "NL"];
+  regions: readonly Region[];
   image: {
     baseUrl: string;
     posterSize: string;

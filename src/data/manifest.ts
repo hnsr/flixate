@@ -42,8 +42,9 @@ export function parseCatalogManifest(value: unknown): CatalogManifest {
   ) {
     throw new Error("Catalog manifest is missing snapshot metadata");
   }
-  if (!Array.isArray(value.regions) || value.regions.join(",") !== "US,NL") {
-    throw new Error("Catalog manifest does not describe the US+NL union");
+  // Keep earlier snapshots usable during rollout and as an offline fallback.
+  if (!Array.isArray(value.regions) || !["US,NL", "US,NL,GB"].includes(value.regions.join(","))) {
+    throw new Error("Catalog manifest does not describe a supported regional union");
   }
   const counts = value.counts;
   const countNames = [

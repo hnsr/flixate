@@ -1,4 +1,4 @@
-export const REGIONS = ["US", "NL"] as const;
+export const REGIONS = ["US", "NL", "GB"] as const;
 export type Region = (typeof REGIONS)[number];
 
 export const MEDIA_TYPES = ["movie", "tv"] as const;

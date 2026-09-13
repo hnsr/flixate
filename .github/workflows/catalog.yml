@@ -32,7 +32,7 @@ jobs:
         with:
           path: .cache/phase0
           key: tmdb-discovery-${{ github.run_id }}
-      - name: Build and validate US+NL snapshot
+      - name: Build and validate US+NL+UK snapshot
         run: npm run catalog -- --resume-cache
       - name: Verify the published snapshot files
         run: npm run catalog:validate

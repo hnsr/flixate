@@ -1,13 +1,13 @@
 # Flixate plan review
 
-Reviewed: 2026-08-31
+Reviewed: 2026-08-31; UK coverage update: 2026-09-13
 
 ## Verdict
 
 The plan is coherent and viable as a personal, zero-cost project. There is no fatal
-architectural mistake. Restricting version 1 to a US+NL availability union
+architectural mistake. Restricting version 1 to a US+NL+UK availability union
 substantially reduces the original crawler risk while covering both the broad US
-catalog and personally relevant Dutch titles, although it retains an explicit
+catalog and personally relevant Dutch and British titles, although it retains an explicit
 coverage trade-off. The remaining findings are definitional or implementation
 details that can be resolved without adding hosting, a database, or paid services.
 The completed Phase 0 run confirms that implementation can proceed to Phase 1.
@@ -24,10 +24,11 @@ seen state for one Google account without changing local-only behavior.
 
 ## Most important findings
 
-### 1. US+NL bounds the region multiplier, but is not worldwide coverage
+### 1. US+NL+UK bounds the region multiplier, but is not worldwide coverage
 
-Querying only the US and Netherlands bounds the supported-regions multiplier at two.
-The completed Phase 0 run found 171,436 unique titles. The original end-to-end run
+The current import queries US, Netherlands, and UK (`GB`), bounding the region
+multiplier at three. The historical two-region Phase 0 run found 171,436 unique
+titles; its measurements below do not include the UK. The original end-to-end run
 finished in 11 minutes 45 seconds, including 1,000 diagnostic lookups that are no
 longer needed, with no rate-limit responses. The measured score-only catalog is
 4.14 MB compressed; the implemented core with year and poster path is 8.43 MB. This fits
@@ -37,11 +38,20 @@ score-mapping or metadata-enrichment bootstrap.
 The premise that the US contains every streamable title is not correct. Availability
 is licensed by country; Netflix, for example, explicitly says that its library
 varies by country and that a title can be licensed in Latin America before the US.
-The US+NL union is therefore a personally useful approximation, not a lossless
+The US+NL+UK union is therefore a personally useful approximation, not a lossless
 shortcut to the worldwide union. It should capture Dutch titles reported in the
 Netherlands while retaining broad US coverage, but it will still miss content
 exclusive to other regions. The revised plan records that limitation and leaves
-additional regions as an optional later feature.
+further regions as an optional later feature.
+
+The UK was added after “Small Prophets” (`tv:312693`) exposed a real omission:
+TMDB reported free streaming on BBC iPlayer in the UK but no qualifying US/NL
+availability. The existing discovery query returns it with `watch_region=GB`.
+Subscription/free/ad-supported eligibility is unchanged; rent/buy still do not
+qualify. Titles shared between regions are deduplicated by TMDB key. Existing
+US-then-NL display metadata priority is preserved, with GB as the third preference.
+The app accepts older US+NL snapshots and derives its coverage label from the
+loaded manifest, so fallback data never incorrectly claims UK coverage.
 
 A GitHub-hosted job still has a six-hour ceiling, while the published Pages artifact
 must remain under 1 GB and deployment itself has a ten-minute limit. The measured

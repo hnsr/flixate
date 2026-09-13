@@ -11,7 +11,7 @@ Generated catalog data remains ignored and is not added to normal Git history.
 
 ## Production data path
 
-- `npm run catalog` performs the US+NL movie/show discovery, deterministic merge,
+- `npm run catalog` performs the US+NL+UK movie/show discovery, deterministic merge,
   validation, and artifact build.
 - The compact core contains title, type, complete canonical genre mapping, release
   year, TMDB score and vote count, and optional poster path.

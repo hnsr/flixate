@@ -33,8 +33,8 @@ function records(): DiscoveredTitle[] {
       releaseDate: null,
       posterPath: null,
       overview: null,
-      regions: new Set(["NL"]),
-      displaySourceRegion: "NL",
+      regions: new Set(["GB"]),
+      displaySourceRegion: "GB",
       voteCount: 0,
     },
     {
@@ -60,7 +60,7 @@ describe("production catalog artifacts", () => {
     const manifest = await writeProductionSnapshot({
       outputDir,
       titles: records(),
-      regions: ["US", "NL"],
+      regions: ["US", "NL", "GB"],
       mode: "full",
       range: { start: "1800-01-01", end: "2028-01-01" },
       topWindowPages: 25,
@@ -72,6 +72,7 @@ describe("production catalog artifacts", () => {
       JSON.parse(await readFile(path.join(outputDir, "manifest.json"), "utf8")),
     );
     expect(savedManifest).toEqual(manifest);
+    expect(savedManifest.regions).toEqual(["US", "NL", "GB"]);
     await expect(validateCatalogSnapshot(outputDir)).resolves.toEqual(manifest);
     expect(manifest.counts).toMatchObject({
       titles: 2,

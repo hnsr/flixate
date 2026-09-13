@@ -33,7 +33,7 @@ Since 2026-09-02, deployment is split into two workflows:
   validates every declared file, runs tests and type checking, and deploys the PWA.
   It does not contact TMDB or regenerate the catalog.
 - **Refresh Flixate catalog** runs nightly at 04:23 UTC or on manual request. It
-  rebuilds the US+NL catalog, validates it, retains the snapshot as a seven-day
+  rebuilds the US+NL+UK catalog, validates it, retains the snapshot as a seven-day
   artifact, runs the app checks, and deploys the fresh catalog with the current app.
 
 The app workflow receives `actions:read` only so the official artifact downloader

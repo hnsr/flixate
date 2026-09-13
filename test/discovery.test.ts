@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { discoverRegionMedia, mergeDiscoveredItems } from "../src/catalog/discovery.js";
 import { TmdbClient } from "../src/catalog/tmdb-client.js";
-import type { DiscoveredTitle, TmdbPage } from "../src/catalog/types.js";
+import { REGIONS, type DiscoveredTitle, type TmdbPage } from "../src/catalog/types.js";
 
 function result(id: number, title: string): TmdbPage {
   return {
@@ -13,6 +13,45 @@ function result(id: number, title: string): TmdbPage {
 }
 
 describe("TMDB discovery", () => {
+  it("includes UK-only shows using GB and the existing streaming offer types", async () => {
+    expect(REGIONS).toEqual(["US", "NL", "GB"]);
+    const client = new TmdbClient({ token: "test" }, "/unused");
+    const get = vi.spyOn(client, "get").mockResolvedValue({
+      page: 1, total_pages: 1, total_results: 1,
+      results: [{ id: 312693, name: "Small Prophets", genre_ids: [35], first_air_date: "2026-02-09" }],
+    });
+    const discovered = await discoverRegionMedia({
+      client, mediaType: "tv", region: "GB",
+      range: { start: "2026-02-09", end: "2026-02-09" },
+      topWindowPages: 1, pageConcurrency: 1,
+    });
+    expect(get).toHaveBeenCalledTimes(2);
+    for (const [endpoint, params] of get.mock.calls) {
+      expect(endpoint).toBe("/discover/tv");
+      expect(params).toMatchObject({ watch_region: "GB", with_watch_monetization_types: "flatrate|free|ads" });
+    }
+    const titles = new Map<string, DiscoveredTitle>();
+    mergeDiscoveredItems(titles, discovered.items, "tv", "GB");
+    expect(titles.size).toBe(1);
+    expect(titles.get("tv:312693")).toMatchObject({ title: "Small Prophets", regions: new Set(["GB"]) });
+  });
+
+  it("deduplicates UK overlaps without changing the existing US then NL display priority", () => {
+    for (const regions of [["GB", "NL", "US"], ["US", "NL", "GB"]] as const) {
+      const titles = new Map<string, DiscoveredTitle>();
+      for (const region of regions) {
+        mergeDiscoveredItems(titles, [{ id: 1, title: `${region} title`, genre_ids: [] }], "movie", region);
+      }
+      expect(titles.size).toBe(1);
+      expect(titles.get("movie:1")).toMatchObject({ title: "US title", regions: new Set(REGIONS) });
+    }
+    const titles = new Map<string, DiscoveredTitle>();
+    for (const region of ["GB", "NL"] as const) {
+      mergeDiscoveredItems(titles, [{ id: 2, title: `${region} title`, genre_ids: [] }], "movie", region);
+    }
+    expect(titles.get("movie:2")?.title).toBe("NL title");
+  });
+
   it("retains original language independently of region or translated title", () => {
     const titles = new Map<string, DiscoveredTitle>();
     mergeDiscoveredItems(titles, [{ id: 1, name: "Korean series", genre_ids: [], original_language: " KO " }], "tv", "NL");

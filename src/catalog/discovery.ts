@@ -13,7 +13,7 @@ import type {
 } from "./types.js";
 
 const TMDB_PAGE_WINDOW = 500;
-const REGION_PRIORITY: Record<Region, number> = { US: 0, NL: 1 };
+const REGION_PRIORITY: Record<Region, number> = { US: 0, NL: 1, GB: 2 };
 
 type DiscoverOptions = {
   client: TmdbClient;

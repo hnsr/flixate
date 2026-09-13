@@ -21,7 +21,7 @@ Implemented on 2026-09-05. The scope was committed separately before implementat
   deleted. These presets are browser-local, not synchronized or exported. Current
   filter settings remain part of JSON backups.
 - Mobile filters collapse behind a toggle. Watchlist controls and card actions
-  wrap on narrow screens. Coverage text explains the US+NL subscription/free/ad
+  wrap on narrow screens. Coverage text explains the loaded snapshot's subscription/free/ad
   union, rental/purchase-only exclusion, and possible partial series availability.
 - No new service, OAuth scope, catalog crawl, performance project, or dedicated
   accessibility/keyboard pass was introduced.
@@ -171,3 +171,14 @@ Search, filter, sort, and selected-watchlist changes reset discovery to the firs
 it. Reload also starts with 100; batch size is session UI state, not a saved filter,
 backup field, or Drive value. Individual watchlists retain their uncapped browsing.
 No catalog regeneration or new service is needed.
+
+## UK coverage follow-up (2026-09-13)
+
+Catalog discovery now unions US, NL, and GB (displayed as UK). This captures
+UK-only streaming titles such as “Small Prophets” without introducing another
+provider, credential, or data format. Per-region title overlap is deduplicated;
+subscription/free/ad-supported offers qualify, while rent/buy remain excluded.
+Coverage labels come from the loaded snapshot, with older US+NL manifests still
+supported during rollout and offline fallback. Historical Phase 0–3 measurements
+refer to the original two-region catalog. A full catalog refresh is required to
+publish the new UK titles; ordinary app builds continue reusing the latest snapshot.
